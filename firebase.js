@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Configuração estratégica do Firebase com os tokens do seu app
 const firebaseConfig = {
   apiKey: "AIzaSyBx79U7mmK7a7GjUy7oTwm4dA9MHcNwzIA",
   authDomain: "protocolo-de-corrida.firebaseapp.com",
@@ -11,7 +12,9 @@ const firebaseConfig = {
   measurementId: "G-PX6GH5SF1X"
 };
 
-// Inicializa o Firebase para o navegador obter o acesso correto
 const app = initializeApp(firebaseConfig);
 
+// Exporta os dois serviços centrais com segurança para o app
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 export default app;
