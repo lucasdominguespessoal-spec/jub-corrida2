@@ -114,12 +114,21 @@
             if (!this.email || !this.senha) { this.erroMsg = 'Preencha todos os campos.'; return; }
             try {
                 if (this.authModo === 'login') {
-                    await window.executarLoginNuvem(this.email, this.senha);
+                    const credencial = await window.executarLoginNuvem(this.email, this.senha);
+                    
+                    // FORÇA O RECONHECIMENTO IMEDIATO DO PROFESSOR NO ALPINE
+                    const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
+                    if (credencial.user && credencial.user.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase()) {
+                        this.user = credencial.user;
+                        this.isProfessor = true;
+                        this.inicializado = true;
+                    }
                 } else {
                     await window.executarCadastroNuvem(this.email, this.senha);
-                    this.sucessoMsg = 'Conta criada com sucesso!';
+                    this.sucessoMsg = 'Conta criada com sucesso! Mude para Login para acessar.';
                 }
             } catch (err) {
+                console.error(err);
                 this.erroMsg = 'Dados incorretos ou falha de conexão.';
             }
         },
