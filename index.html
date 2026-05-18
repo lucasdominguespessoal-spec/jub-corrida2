@@ -22,30 +22,41 @@
         /* TRAVA TOTAL ANTI-ZOOM */
         input[type="text"], textarea, select { font-size: 16px !important; }
 
-        /* 🖨️ GRID COMPACTO DE PÁGINA ÚNICA PARA O PDF (A4 SINGLE PAGE) */
+        /* 🖨️ NOVO LAYOUT DO PDF: COLUNAS VERTICAIS LATERAIS EM PAISAGEM (ANTI-MAÇAROCADO) */
         @media print {
-            @page { size: A4 portrait; margin: 8mm !important; }
-            body { background: white !important; color: #111827 !important; padding: 0 !important; margin: 0 !important; font-size: 11px !important; }
+            @page { size: A4 landscape; margin: 10mm !important; }
+            body { background: white !important; color: #0f172a !important; padding: 0 !important; margin: 0 !important; font-size: 10px !important; }
             .no-print { display: none !important; }
             
-            .print-card { background: white !important; border: none !important; border-bottom: 2px solid #111827 !important; color: black !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 0 8px 0 !important; margin-bottom: 12px !important; }
+            /* Cabeçalho Limpo de Linha Única */
+            .print-card { background: white !important; border: none !important; border-bottom: 2px solid #0f172a !important; color: black !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 0 10px 0 !important; margin-bottom: 16px !important; }
             .print-text { color: black !important; }
-            .print-bg-dark { background: #f9fafb !important; padding: 6px 10px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; }
+            .print-bg-dark { background: #f8fafc !important; padding: 8px 12px !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; }
             
-            .print-grid-container { display: grid !important; grid-template-cols: 1fr 1fr !important; gap: 8px !important; }
-            .print-quadrante { background: #ffffff !important; border: 1px solid #e5e7eb !important; border-radius: 10px !important; padding: 10px !important; display: flex !important; flex-col: justify-between !important; page-break-inside: avoid !important; }
-            .print-day-title { font-size: 11px !important; font-weight: 900 !important; text-transform: uppercase !important; color: #111827 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid #f3f4f6 !important; padding-bottom: 4px !important; margin-bottom: 6px !important; }
+            /* Distribuição das Colunas Laterais */
+            .print-grid-container { display: flex !important; flex-direction: row !important; gap: 8px !important; width: 100% !important; align-items: stretch !important; justify-content: space-between !important; }
             
-            .print-status-badge { font-size: 8px !important; font-weight: 800 !important; text-transform: uppercase !important; padding: 1px 6px !important; border-radius: 4px !important; border: 1px solid #cbd5e1 !important; background: #f3f4f6 !important; }
+            /* Cada Coluna Vertical */
+            .print-quadrante { flex: 1 !important; background: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 12px !important; padding: 12px !important; display: flex !important; flex-direction: column !important; justify-content: flex-start !important; page-break-inside: avoid !important; min-width: 0 !important; }
+            
+            /* Título e Status no topo do Painel */
+            .print-day-title { font-size: 11px !important; font-weight: 900 !important; text-transform: uppercase !important; color: #0f172a !important; border-bottom: 1px solid #e2e8f0 !important; padding-bottom: 6px !important; margin-bottom: 8px !important; display: flex !important; flex-direction: column !important; gap: 4px !important; text-align: center !important; }
+            
+            /* Micro Pílulas reativas no PDF */
+            .print-status-badge { font-size: 7.5px !important; font-weight: 800 !important; text-transform: uppercase !important; padding: 2px 0 !important; border-radius: 5px !important; border: 1px solid #cbd5e1 !important; text-align: center !important; display: block !important; }
             .status-feito { background: #ecfdf5 !important; color: #065f46 !important; border-color: #a7f3d0 !important; }
             .status-adaptei { background: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
             .status-off { background: #fef2f2 !important; color: #991b1b !important; border-color: #fca5a5 !important; }
 
-            .print-prescription { font-size: 10.5px !important; color: #374151 !important; line-height: 1.35 !important; font-weight: 600 !important; }
-            .print-sub-info { font-size: 9px !important; color: #6b7280 !important; margin-top: 1px !important; display: block !important; }
+            /* Miolo do Treino */
+            .print-prescription { font-size: 10px !important; color: #334155 !important; line-height: 1.4 !important; font-weight: 600 !important; margin-bottom: 8px !important; flex-grow: 1 !important; }
+            .print-sub-info { font-size: 8px !important; color: #64748b !important; font-weight: normal !important; display: block !important; margin-top: 2px !important; border-top: 1px dashed #f1f5f9 !important; padding-top: 2px !important; }
             
-            .print-metrics { display: flex !important; gap: 10px !important; font-size: 10px !important; font-family: monospace !important; font-weight: bold !important; background: #f8fafc !important; padding: 4px 8px !important; border-radius: 6px !important; border: 1px solid #e2e8f0 !important; margin-top: 6px !important; color: #334155 !important; }
-            .print-feedback-box { font-size: 9.5px !important; color: #475569 !important; font-style: italic !important; margin-top: 5px !important; padding-left: 6px !important; border-left: 2px solid #cbd5e1 !important; line-height: 1.3 !important; }
+            /* Bloco de Métricas na Base */
+            .print-metrics { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; padding: 6px !important; margin-top: auto !important; display: flex !important; flex-direction: column !important; gap: 2px !important; font-family: monospace !important; font-size: 8.5px !important; font-weight: bold !important; color: #334155 !important; }
+            
+            /* Bloco Isolado de Comentário */
+            .print-feedback-box { font-size: 8.5px !important; color: #475569 !important; font-style: italic !important; margin-top: 8px !important; padding-top: 6px !important; border-top: 1px solid #e2e8f0 !important; line-height: 1.3 !important; word-break: break-word !important; }
         }
     </style>
 </head>
@@ -147,7 +158,7 @@
                     </div>
 
                     <div class="hidden print:block text-right shrink-0">
-                        <span class="text-xs font-black font-mono tracking-wider text-neutral-900" x-text="'COORT ' + planilha[semanaAtiva].semana"></span>
+                        <span class="text-xs font-black font-mono tracking-wider text-neutral-900" x-text="'SEMANA PLANILHA: ' + planilha[semanaAtiva].semana"></span>
                     </div>
                 </div>
 
@@ -196,7 +207,7 @@
     <div class="w-full max-w-md mx-auto px-4 mt-4 no-print" x-show="planilha.length > 0" x-cloak>
         <button @click="exportarPDF()" 
                 class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-950 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md active:scale-[0.98] cursor-pointer transition-all flex items-center justify-center gap-2">
-            📄 Gerar Relatório PDF
+            📄 RELATÓRIO SEMANAL
         </button>
     </div>
 
@@ -252,7 +263,7 @@
                     </div>
                     <div :class="isDark ? 'border-neutral-900' : 'border-neutral-200/80'" class="pt-2 border-t" x-show="planilha[semanaAtiva].dias[diaAtivoIndex].desaquecimento !== '-'">
                         <span class="text-[9px] text-neutral-500 uppercase font-black tracking-widest block">Desaquecimento</span>
-                        <p :class="isDark ? 'text-neutral-400' : 'text-neutral-600'" class="text-xs mt-0.5 font-medium" x-text="planilha[semanaAtiva].dias[desaquecimento]"></p>
+                        <p :class="isDark ? 'text-neutral-400' : 'text-neutral-600'" class="text-xs mt-0.5 font-medium" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].desaquecimento"></p>
                     </div>
                 </div>
 
@@ -312,18 +323,18 @@
                               :class="respostas[dia.id]?.status === 'Feito' ? 'status-feito' : 
                                       respostas[dia.id]?.status === 'Adaptei' ? 'status-adaptei' : 
                                       respostas[dia.id]?.status === 'Off' ? 'status-off' : ''"
-                              x-text="respostas[dia.id]?.status || 'Não feito'"></span>
+                              x-text="respostas[dia.id]?.status || 'PENDENTE'"></span>
                     </div>
                     
                     <div class="print-prescription">
-                        <span x-show="dia.aquecimento !== '-'" x-text="'[Aq: ' + dia.aquecimento + '] '"></span>
                         <span x-text="dia.principal"></span>
-                        <span x-show="dia.desaquecimento !== '-'" x-text="' [Desaq: ' + dia.desaquecimento + ']'"></span>
+                        <span class="print-sub-info" x-show="dia.aquecimento !== '-'" x-text="'Aq: ' + dia.aquecimento"></span>
+                        <span class="print-sub-info" x-show="dia.desaquecimento !== '-'" x-text="'Desaq: ' + dia.desaquecimento"></span>
                     </div>
                     
                     <div class="print-metrics" x-show="respostas[dia.id]?.pace || respostas[dia.id]?.tempo">
-                        <span x-show="respostas[dia.id]?.pace">Pace: <span x-text="respostas[dia.id]?.pace"></span></span>
-                        <span x-show="respostas[dia.id]?.tempo">| Tempo: <span x-text="respostas[dia.id]?.tempo"></span></span>
+                        <span x-show="respostas[dia.id]?.pace">PACE: <span x-text="respostas[dia.id]?.pace"></span></span>
+                        <span x-show="respostas[dia.id]?.tempo">TEMPO: <span x-text="respostas[dia.id]?.tempo"></span></span>
                     </div>
                     
                     <div class="print-feedback-box" x-show="respostas[dia.id]?.feedback">
