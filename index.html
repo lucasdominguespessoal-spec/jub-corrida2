@@ -36,9 +36,10 @@
                         let docSnap = await getDoc(docRef);
                         if (docSnap.exists()) {
                             const dados = docSnap.data();
+                            // SE OS DADOS ESTIVEREM SOLTOS NO BANCO, COLOCA DENTRO DE UM ARRAY
                             if (dados.semanas) {
                                 listaPlanilhas = dados.semanas;
-                            } else if (dados.dias) {
+                            } else if (dados.dias || dados.semana) {
                                 listaPlanilhas = [dados];
                             }
                         }
@@ -50,6 +51,7 @@
                         painel.__x.$data.user = usuario;
                         painel.__x.$data.isProfessor = isProf;
                         painel.__x.$data.planilha = listaPlanilhas;
+                        painel.__x.$data.semanaAtiva = 0; // FORÇA O ÍNDICE ZERO
                         painel.__x.$data.inicializado = true;
                     } else { setTimeout(injetar, 100); }
                 };
@@ -174,30 +176,10 @@
                     <button @click="window.executarDesconexao()" class="text-rose-500 underline cursor-pointer">Sair</button>
                 </div>
 
-                <div x-show="isProfessor" class="w-full max-w-md mx-auto px-4 mt-4 space-y-4">
-                    <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl">
-                        <h2 class="text-xl font-black tracking-tight mb-4">Prescrever Planilha</h2>
-                        <div class="space-y-4">
-                            <input type="text" x-model="profAtleta" placeholder="E-mail do Aluno" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
-                            <div class="grid grid-cols-2 gap-2">
-                                <input type="text" x-model="profSemana" placeholder="Semana Nº" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
-                                <input type="text" x-model="profPeriodo" placeholder="Período" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
-                            </div>
-                            <template x-for="(dia, idx) in profDias" :key="idx">
-                                <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
-                                    <span class="font-black text-amber-500 text-[10px]" x-text="dia.nome"></span>
-                                    <textarea placeholder="Treino Principal" x-model="dia.principal" class="w-full bg-neutral-900 p-2 rounded-lg text-[11px] resize-none outline-none"></textarea>
-                                </div>
-                            </template>
-                            <button @click="publicarPlanilha()" class="w-full bg-emerald-500 text-neutral-950 py-3 rounded-xl font-black uppercase tracking-widest cursor-pointer">🚀 Publicar</button>
-                        </div>
-                    </div>
-                </div>
-
                 <div x-show="!isProfessor" class="w-full max-w-md mx-auto mt-2">
-                    <div x-show="planilha.length === 0" class="px-4 pt-10 text-center text-xs text-neutral-500">Nenhum treino disponível.</div>
+                    <div x-show="!planilha || planilha.length === 0" class="px-4 pt-10 text-center text-xs text-neutral-500">Nenhum treino disponível.</div>
                     
-                    <div x-show="planilha.length > 0">
+                    <div x-show="planilha && planilha.length > 0">
                         <header class="px-4 pt-4">
                             <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl">
                                 <span class="text-[10px] font-black uppercase tracking-widest text-amber-500 block">📋 PROTOCOLO</span>
@@ -205,11 +187,11 @@
                                     <h1 class="text-xl font-black tracking-tight truncate" x-text="'Semana ' + (planilha[semanaAtiva]?.semana || '1')"></h1>
                                     <select x-model="semanaAtiva" class="bg-neutral-800 border border-neutral-700 text-[10px] font-bold p-1 rounded-lg">
                                         <template x-for="(s, i) in planilha" :key="i">
-                                            <option :value="i" x-text="'S' + s.semana"></option>
+                                            <option :value="i" x-text="'S' + (s?.semana || '1')"></option>
                                         </template>
                                     </select>
                                 </div>
-                                <div class="mt-2 text-xs font-bold text-neutral-400" x-text="planilha[semanaAtiva]?.periodo"></div>
+                                <div class="mt-2 text-xs font-bold text-neutral-400" x-text="planilha[semanaAtiva]?.periodo || ''"></div>
                             </div>
                         </header>
 
@@ -217,7 +199,7 @@
                             <div class="bg-neutral-900 border border-neutral-800 p-1.5 rounded-2xl flex gap-1">
                                 <template x-for="(dia, index) in (planilha[semanaAtiva]?.dias || [])" :key="index">
                                     <button @click="diaAtivoIndex = index" :class="diaAtivoIndex === index ? 'bg-amber-500 text-neutral-950' : 'text-neutral-400'" class="flex-1 py-2.5 rounded-xl text-center text-[10px] font-black cursor-pointer">
-                                        <span x-text="dia.nome.substring(0,3)"></span>
+                                        <span x-text="dia?.nome ? dia.nome.substring(0,3) : 'DIA'"></span>
                                     </button>
                                 </template>
                             </div>
@@ -227,22 +209,12 @@
                             <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 space-y-4">
                                 <div class="p-4 bg-neutral-950 border border-neutral-800 rounded-2xl">
                                     <span class="text-[9px] text-amber-500 font-black uppercase">Treino</span>
-                                    <p class="text-sm font-bold text-neutral-50" x-text="planilha[semanaAtiva].dias[diaAtivoIndex]?.principal || 'Off'"></p>
-                                </div>
-
-                                <div class="grid grid-cols-3 gap-2">
-                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Feito')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Feito' ? 'bg-emerald-500 text-neutral-950' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Feito</button>
-                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Adaptei')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Adaptei' ? 'bg-amber-500 text-neutral-950' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Adaptei</button>
-                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Off')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Off' ? 'bg-rose-500 text-white' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Off</button>
+                                    <p class="text-sm font-bold text-neutral-50" x-text="planilha[semanaAtiva]?.dias?.[diaAtivoIndex]?.principal || 'Off'"></p>
                                 </div>
                             </div>
                         </main>
                     </div>
                 </div>
-            </div>
-
-        </div>
-    </div>
 
 </body>
 </html>
