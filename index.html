@@ -17,6 +17,28 @@
         .card-transition { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
         input[type="text"], input[type="email"], input[type="password"], textarea, select { font-size: 16px !important; }
     </style>
+
+    <script type="module">
+        import { auth, db } from './firebase.js';
+        import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        // Expõe os métodos de controle para a janela que o Alpine vai ler
+        window.fbLogin = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
+        window.fbCadastro = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
+        window.fbLogout = () => signOut(auth);
+        window.fbDoc = doc;
+        window.fbSet = setDoc;
+        window.fbGet = getDoc;
+        window.fbDb = db;
+
+        // Escuta ativa de conexões de usuários
+        onAuthStateChanged(auth, (usuario) => {
+            // Dispara um evento personalizado para avisar o Alpine que o status mudou
+            const evento = new CustomEvent('fb-auth-mudou', { detail: usuario });
+            document.dispatchEvent(evento);
+        });
+    </script>
 </head>
 <body class="min-h-screen pb-20 transition-colors duration-300"
       :class="isDark ? 'bg-neutral-950 text-neutral-50' : 'bg-neutral-100 text-neutral-900'"
@@ -29,12 +51,6 @@
         senha: '',
         erroMsg: '',
         sucessoMsg: '',
-        
-        // Conexões com o Firebase
-        auth: null,
-        db: null,
-        fbAuthModule: null,
-        fbStoreModule: null,
         
         // Dados do Aluno
         semanaAtiva: 0,
@@ -56,43 +72,29 @@
             { id: 'sab', nome: 'SÁBADO', aquecimento: '', principal: '', desaquecimento: '' }
         ],
 
-        async init() {
+        init() {
             const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
 
             const localFeed = localStorage.getItem('feedback_treinos_lucas');
             if (localFeed) this.respostas = JSON.parse(localFeed);
 
-            try {
-                // Carrega as configurações do seu arquivo firebase.js de forma dinâmica
-                const firebaseApp = await import('./firebase.js');
-                
-                // Carrega os módulos oficiais do Firebase via CDN
-                this.fbAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-                this.fbStoreModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                
-                this.auth = firebaseApp.auth;
-                this.db = firebaseApp.db;
-
-                // Monitora o estado do usuário na nuvem
-                this.fbAuthModule.onAuthStateChanged(this.auth, async (usuario) => {
-                    if (usuario) {
-                        this.user = usuario;
-                        this.isProfessor = (usuario.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
-                        this.erroMsg = '';
-                        
-                        if (!this.isProfessor) {
-                            await this.carregarPlanilhaDoAluno(usuario.email);
-                        }
-                    } else {
-                        this.user = null;
-                        this.isProfessor = false;
-                        this.planilha = [];
+            // Ouvinte do gatilho de login disparado pelo Firebase módulo
+            document.addEventListener('fb-auth-mudou', async (e) => {
+                const usuario = e.detail;
+                if (usuario) {
+                    this.user = usuario;
+                    this.isProfessor = (usuario.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
+                    this.erroMsg = '';
+                    
+                    if (!this.isProfessor) {
+                        await this.carregarPlanilhaDoAluno(usuario.email);
                     }
-                });
-            } catch (e) {
-                console.error('Erro ao inicializar módulos do Firebase:', e);
-                this.erroMsg = 'Erro de conexão com o servidor. Verifique a internet.';
-            }
+                } else {
+                    this.user = null;
+                    this.isProfessor = false;
+                    this.planilha = [];
+                }
+            });
         },
 
         async executarAuth() {
@@ -100,13 +102,12 @@
             this.sucessoMsg = '';
             if (!this.email || !this.senha) { this.erroMsg = 'Preencha todos os campos.'; return; }
             if (this.senha.length < 6) { this.erroMsg = 'A senha precisa ter no mínimo 6 caracteres.'; return; }
-            if (!this.auth || !this.fbAuthModule) { this.erroMsg = 'O sistema ainda está conectando. Aguarde 3 segundos.'; return; }
             
             try {
                 if (this.authModo === 'login') {
-                    await this.fbAuthModule.signInWithEmailAndPassword(this.auth, this.email, this.senha);
+                    await window.fbLogin(this.email, this.senha);
                 } else {
-                    await this.fbAuthModule.createUserWithEmailAndPassword(this.auth, this.email, this.senha);
+                    await window.fbCadastro(this.email, this.senha);
                     this.sucessoMsg = 'Conta mestre criada com sucesso! Carregando painel...';
                 }
             } catch (err) {
@@ -119,28 +120,27 @@
                 } else {
                     this.erroMsg = 'Falha ao autenticar. Verifique seus dados.';
                 }
-                console.error("Erro original do Firebase:", err.code);
+                console.error("Erro original:", err.code);
             }
         },
 
         async logout() {
-            if (this.fbAuthModule && this.auth) {
-                await this.fbAuthModule.signOut(this.auth);
+            if (window.fbLogout) {
+                await window.fbLogout();
                 this.email = '';
                 this.senha = '';
             }
         },
 
         async carregarPlanilhaDoAluno(emailIdentificador) {
-            if (!this.db || !this.fbStoreModule) return;
+            if (!window.fbGet || !window.fbDoc) return;
             try {
-                const docRef = this.fbStoreModule.doc(this.db, "planilhas", emailIdentificador);
-                let docSnap = await this.fbStoreModule.getDoc(docRef);
+                const docRef = window.fbDoc(window.fbDb, "planilhas", emailIdentificador);
+                let docSnap = await window.fbGet(docRef);
                 
-                // Se não achar pelo e-mail, busca pelo nome padrão de teste
                 if (!docSnap.exists()) {
-                    const docPadraoRef = this.fbStoreModule.doc(this.db, "planilhas", "Lucas Domingues");
-                    docSnap = await this.fbStoreModule.getDoc(docPadraoRef);
+                    const docPadraoRef = window.fbDoc(window.fbDb, "planilhas", "Lucas Domingues");
+                    docSnap = await window.fbGet(docPadraoRef);
                 }
 
                 if (docSnap.exists() && docSnap.data().semanas) {
@@ -177,8 +177,8 @@
                     }))
                 };
 
-                const docRef = this.fbStoreModule.doc(this.db, "planilhas", this.profAtleta);
-                const docSnap = await this.fbStoreModule.getDoc(docRef);
+                const docRef = window.fbDoc(window.fbDb, "planilhas", this.profAtleta);
+                const docSnap = await window.fbGet(docRef);
                 
                 let listaSemanas = [];
                 if (docSnap.exists() && docSnap.data().semanas) {
@@ -186,7 +186,7 @@
                 }
                 listaSemanas.unshift(novaSemana);
 
-                await this.fbStoreModule.setDoc(docRef, { semanas: listaSemanas });
+                await window.fbSet(docRef, { semanas: listaSemanas });
                 
                 this.sucessoMsg = 'Nova planilha publicada com sucesso para ' + this.profAtleta + '!';
                 this.profSemana = '';
@@ -201,10 +201,10 @@
         async salvarResposta(diaId) {
             localStorage.setItem('feedback_treinos_lucas', JSON.stringify(this.respostas));
             
-            if (this.db && this.fbStoreModule && this.respostas[diaId]) {
+            if (window.fbSet && window.fbDoc && this.respostas[diaId]) {
                 try {
-                    const docRef = this.fbStoreModule.doc(this.db, "treinos_lucas", diaId);
-                    await this.fbStoreModule.setDoc(docRef, {
+                    const docRef = window.fbDoc(window.fbDb, "treinos_lucas", diaId);
+                    await window.fbSet(docRef, {
                         ...this.respostas[diaId],
                         atualizadoEm: new Date().toISOString()
                     }, { merge: true });
@@ -241,11 +241,11 @@
             <div class="space-y-4">
                 <div>
                     <label class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">E-mail de Acesso</label>
-                    <input type="email" x-model="email" placeholder="seu@email.com" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none focus:border-amber-500">
+                    <input type="email" x-model="email" placeholder="seu@email.com" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Senha Segura</label>
-                    <input type="password" x-model="senha" placeholder="Mínimo 6 caracteres" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none focus:border-amber-500">
+                    <input type="password" x-model="senha" placeholder="Mínimo 6 caracteres" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none">
                 </div>
 
                 <div x-show="erroMsg" class="text-xs font-bold text-rose-500 bg-rose-500/10 p-3 rounded-xl" x-text="erroMsg" x-cloak></div>
@@ -282,7 +282,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="font-bold text-neutral-400 uppercase tracking-wider block mb-1">E-mail ou Nome do Aluno</label>
-                            <input type="text" x-model="profAtleta" placeholder="ex: lucas@email.com ou Lucas Domingues" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border p-2.5 rounded-xl focus:outline-none">
+                            <input type="text" x-model="profAtleta" placeholder="ex: lucas@email.com" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border p-2.5 rounded-xl focus:outline-none">
                         </div>
                         <div>
                             <label class="font-bold text-neutral-400 uppercase tracking-wider block mb-1">Semana Nº</label>
@@ -320,9 +320,9 @@
                             <div class="p-3 bg-neutral-950/60 border border-neutral-800/60 rounded-xl space-y-2">
                                 <span class="font-black text-amber-500 tracking-wide block text-[10px]" x-text="dia.nome"></span>
                                 <div class="space-y-1.5">
-                                    <input type="text" placeholder="Aquecimento (ex: 8min leve)" x-model="dia.aquecimento" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none">
-                                    <textarea placeholder="Comando Principal (ex: Corrida 35min Z2)" rows="2" x-model="dia.principal" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none leading-relaxed"></textarea>
-                                    <input type="text" placeholder="Desaquecimento (ex: 5min leve)" x-model="dia.desaquecimento" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none">
+                                    <input type="text" placeholder="Aquecimento" x-model="dia.aquecimento" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none">
+                                    <textarea placeholder="Comando Principal" rows="2" x-model="dia.principal" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none leading-relaxed"></textarea>
+                                    <input type="text" placeholder="Desaquecimento" x-model="dia.desaquecimento" :class="isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'" class="w-full p-2 rounded-lg text-[11px] focus:outline-none">
                                 </div>
                             </div>
                         </template>
@@ -341,7 +341,7 @@
         <div x-show="!isProfessor" class="w-full max-w-md mx-auto mt-2">
             
             <div x-show="planilha.length === 0" class="px-4 pt-10 text-center">
-                <p class="text-xs font-medium text-neutral-400 leading-relaxed">Nenhuma planilha foi localizada para este perfil na nuvem.<br>O Professor precisa criar o primeiro plano de treinos informando seu e-mail ou o termo 'Lucas Domingues'.</p>
+                <p class="text-xs font-medium text-neutral-400 leading-relaxed">Nenhuma planilha foi localizada para este perfil na nuvem.<br>O Professor precisa criar o primeiro plano informando seu e-mail de acesso.</p>
             </div>
 
             <div x-show="planilha.length > 0">
