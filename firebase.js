@@ -4,13 +4,14 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
 
 // SUAS CREDENCIAIS DO FIREBASE (Mantenha as suas se forem diferentes)
 const firebaseConfig = {
-    apiKey: "AIzaSyAs7...", 
-    authDomain: "jub-corrida2.firebaseapp.com",
-    projectId: "jub-corrida2",
-    storageBucket: "jub-corrida2.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef"
-};
+    apiKey: "AIzaSyBx79U7mmK7a7GjUy7oTWm4dA9MHcNwzIA",
+    authDomain: "protocolo-de-corrida.firebaseapp.com",
+    projectId: "protocolo-de-corrida",
+    storageBucket: "protocolo-de-corrida.firebasestorage.app",
+    messagingSenderId: "187125786053",
+    appId: "1:187125786053:web:28f37fb7a3307c391b17ac",
+    measurementId: "G-PX6GH5SF1X"
+  };
 
 // Inicializa o Firebase de forma segura
 const app = initializeApp(firebaseConfig);
