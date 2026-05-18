@@ -1,9 +1,10 @@
 {
+  "name": "jub-corrida2",
+  "version": "1.0.0",
+  "description": "Protocolo de Treino Inteligente",
+  "main": "index.html",
   "scripts": {
-    "start": "servor --reload"
+    "start": "echo 'Projeto estático pronto'"
   },
-  "dependencies": {
-    "servor": "^4.0.2",
-    "firebase": "^10.8.0"
-  }
+  "dependencies": {}
 }

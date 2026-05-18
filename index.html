@@ -24,7 +24,6 @@
         import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-        // Garante a comunicação global forçada com o painel visual
         window.comunicarAuth = (usuario, isProfessor, planilha) => {
             const painel = document.getElementById('app-root');
             if (painel && painel.__x) {
@@ -35,7 +34,6 @@
             }
         };
 
-        // Escuta a sessão ativa do usuário
         onAuthStateChanged(auth, async (usuario) => {
             if (usuario) {
                 const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
@@ -47,7 +45,6 @@
                         const docRef = doc(db, "planilhas", usuario.email.toLowerCase().trim());
                         let docSnap = await getDoc(docRef);
                         if (!docSnap.exists()) {
-                            // Backup de segurança para puxar o seu treino caso o e-mail mude
                             const docPadrao = doc(db, "planilhas", "Lucas Domingues");
                             docSnap = await getDoc(docPadrao);
                         }
@@ -62,10 +59,10 @@
             }
         });
 
-        // Ações de Autenticação expostas de forma segura
         window.executarLoginNuvem = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
         window.executarCadastroNuvem = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
         window.executarDesconexao = () => signOut(auth);
+        
         window.salvarPlanilhaNuvem = async (atleta, dados) => {
             const ref = doc(db, "planilhas", atleta.toLowerCase().trim());
             const snap = await getDoc(ref);
@@ -74,8 +71,9 @@
                 atuais = snap.data().semanas.filter(s => s.semana !== dados.semana);
             }
             atuais.unshift(dados);
-            return setDoc(ref, { semanas tracking: atuais });
+            return setDoc(ref, { semanas: atuais });
         };
+        
         window.salvarFeedbackNuvem = (diaId, dados) => setDoc(doc(db, "treinos_lucas", diaId), { ...dados, atualizadoEm: new Date().toISOString() }, { merge: true });
     </script>
 </head>
@@ -108,7 +106,6 @@
         init() {
             const localFeed = localStorage.getItem('feedback_treinos_lucas');
             if (localFeed) this.respostas = JSON.parse(localFeed);
-            // Força a renderização inicial mesmo se a nuvem demorar
             setTimeout(() => { this.inicializado = true; }, 1500);
         },
 
@@ -120,7 +117,7 @@
                     await window.executarLoginNuvem(this.email, this.senha);
                 } else {
                     await window.executarCadastroNuvem(this.email, this.senha);
-                    this.sucessoMsg = 'Conta mestre ativada!';
+                    this.sucessoMsg = 'Conta criada com sucesso!';
                 }
             } catch (err) {
                 this.erroMsg = 'Dados incorretos ou falha de conexão.';
@@ -284,20 +281,6 @@
                                     <div class="text-right">
                                         <span class="text-[9px] text-neutral-500 uppercase font-bold block">Período</span>
                                         <span class="font-bold text-xs" x-text="planilha[semanaAtiva]?.periodo"></span>
-                                    </div>
-                                </div>
-                                <div class="mt-3">
-                                    <button @click="abaZonasAberta = !abaZonasAberta" class="w-full flex justify-between items-center bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-xs text-neutral-400 cursor-pointer">
-                                        <span>⏱️ Consultar Zonas de Treino</span>
-                                        <span x-text="abaZonasAberta ? '▲' : '▼'"></span>
-                                    </button>
-                                    <div x-show="abaZonasAberta" class="mt-2 p-3 bg-neutral-950 rounded-xl font-mono text-xs space-y-1">
-                                        <template x-for="(ritmo, zona) in planilha[semanaAtiva]?.zonas" :key="zona">
-                                            <div class="flex justify-between border-b border-neutral-900 pb-1 last:border-none">
-                                                <span class="font-bold text-amber-500" x-text="zona"></span>
-                                                <span class="text-white" x-text="ritmo"></span>
-                                            </div>
-                                        </template>
                                     </div>
                                 </div>
                             </div>
