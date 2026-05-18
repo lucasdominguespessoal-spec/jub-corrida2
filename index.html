@@ -47,12 +47,12 @@
                         
                         if (docSnap.exists()) {
                             const dadosBanco = docSnap.data();
-                            
-                            // Se os dados vierem direto no formato novo solto do professor
-                            if (dadosBanco.dias || dadosBanco.semana) {
-                                listaPlanilhas = [dadosBanco]; // Envelopa em array para o Alpine ler
-                            } else if (dadosBanco.semanas) {
+                            // Se os dados vierem no formato de array de semanas (correto)
+                            if (dadosBanco.semanas && Array.isArray(dadosBanco.semanas)) {
                                 listaPlanilhas = dadosBanco.semanas;
+                            } else if (dadosBanco.dias || dadosBanco.semana) {
+                                // Paraglide de segurança caso o dado antigo ainda persista solto
+                                listaPlanilhas = [dadosBanco];
                             }
                         }
                     } catch (e) { 
@@ -60,7 +60,7 @@
                     }
                 }
                 
-                // Força a injeção direta no painel visual
+                // Injeta diretamente os dados corrigidos no Alpine.js
                 const painel = document.getElementById('app-root');
                 if (painel && painel.__x) {
                     painel.__x.$data.user = usuario;
@@ -83,15 +83,19 @@
         window.executarCadastroNuvem = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
         window.executarDesconexao = () => signOut(auth);
         
+        // MOTOR DE GRAVAÇÃO CORRIGIDO: Salva dentro de uma estrutura limpa de array
         window.salvarPlanilhaNuvem = async (atleta, dados) => {
             const ref = doc(db, "planilhas", atleta.toLowerCase().trim());
             const snap = await getDoc(ref);
             let atuais = [];
+            
             if (snap.exists() && snap.data().semanas) {
-                atuais = snap.data().semanas.filter(s => s.semana !== dados.semana);
+                // Filtra para não duplicar a mesma semana caso o professor republique
+                atuais = snap.data().semanas.filter(s => String(s.semana) !== String(dados.semana));
             }
+            
             atuais.unshift(dados);
-            return setDoc(ref, { semanas: atuais });
+            return setDoc(ref, { semanas: atuais }, { merge: true });
         };
         
         window.salvarFeedbackNuvem = (diaId, dados) => setDoc(doc(db, "treinos_lucas", diaId), { ...dados, atualizadoEm: new Date().toISOString() }, { merge: true });
