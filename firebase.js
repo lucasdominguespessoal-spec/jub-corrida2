@@ -1,5 +1,6 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 
+// Configuração estratégica do Firebase com os tokens do seu app
 const firebaseConfig = {
   apiKey: "AIzaSyBx79U7mmK7a7GjUy7oTwm4dA9MHcNwzIA",
   authDomain: "protocolo-de-corrida.firebaseapp.com",
@@ -10,5 +11,7 @@ const firebaseConfig = {
   measurementId: "G-PX6GH5SF1X"
 };
 
+// Inicializa o Firebase para o navegador obter o acesso correto
 const app = initializeApp(firebaseConfig);
+
 export default app;
