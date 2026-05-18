@@ -15,7 +15,6 @@
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .card-transition { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
         input[type="text"], input[type="email"], input[type="password"], textarea, select { font-size: 16px !important; }
     </style>
 
@@ -24,17 +23,8 @@
         import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-        window.comunicarAuth = (usuario, isProfessor, planilha) => {
-            const painel = document.getElementById('app-root');
-            if (painel && painel.__x) {
-                painel.__x.$data.user = usuario;
-                painel.__x.$data.isProfessor = isProfessor;
-                painel.__x.$data.planilha = planilha;
-                painel.__x.$data.inicializado = true;
-            }
-        };
-
         onAuthStateChanged(auth, async (usuario) => {
+            const painel = document.getElementById('app-root');
             if (usuario) {
                 const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
                 const isProf = (usuario.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
@@ -44,37 +34,30 @@
                     try {
                         const docRef = doc(db, "planilhas", usuario.email.toLowerCase().trim());
                         let docSnap = await getDoc(docRef);
-                        
                         if (docSnap.exists()) {
-                            const dadosBanco = docSnap.data();
-                            // Se os dados vierem no formato de array de semanas (correto)
-                            if (dadosBanco.semanas && Array.isArray(dadosBanco.semanas)) {
-                                listaPlanilhas = dadosBanco.semanas;
-                            } else if (dadosBanco.dias || dadosBanco.semana) {
-                                // Paraglide de segurança caso o dado antigo ainda persista solto
-                                listaPlanilhas = [dadosBanco];
+                            const dados = docSnap.data();
+                            if (dados.semanas) {
+                                listaPlanilhas = dados.semanas;
+                            } else if (dados.dias) {
+                                listaPlanilhas = [dados];
                             }
                         }
-                    } catch (e) { 
-                        console.error("Erro ao buscar planilha:", e); 
-                    }
+                    } catch (e) { console.error(e); }
                 }
-                
-                // Injeta diretamente os dados corrigidos no Alpine.js
-                const painel = document.getElementById('app-root');
-                if (painel && painel.__x) {
-                    painel.__x.$data.user = usuario;
-                    painel.__x.$data.isProfessor = isProf;
-                    painel.__x.$data.planilha = listaPlanilhas;
-                    painel.__x.$data.semanaAtiva = 0;
-                    painel.__x.$data.inicializado = true;
-                }
+
+                const injetar = () => {
+                    if (painel && painel.__x) {
+                        painel.__x.$data.user = usuario;
+                        painel.__x.$data.isProfessor = isProf;
+                        painel.__x.$data.planilha = listaPlanilhas;
+                        painel.__x.$data.inicializado = true;
+                    } else { setTimeout(injetar, 100); }
+                };
+                injetar();
             } else {
-                const painel = document.getElementById('app-root');
                 if (painel && painel.__x) {
                     painel.__x.$data.user = null;
-                    painel.__x.$data.isProfessor = false;
-                    painel.__x.$data.planilha = [];
+                    painel.__x.$data.inicializado = true;
                 }
             }
         });
@@ -83,17 +66,13 @@
         window.executarCadastroNuvem = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
         window.executarDesconexao = () => signOut(auth);
         
-        // MOTOR DE GRAVAÇÃO CORRIGIDO: Salva dentro de uma estrutura limpa de array
         window.salvarPlanilhaNuvem = async (atleta, dados) => {
             const ref = doc(db, "planilhas", atleta.toLowerCase().trim());
             const snap = await getDoc(ref);
             let atuais = [];
-            
             if (snap.exists() && snap.data().semanas) {
-                // Filtra para não duplicar a mesma semana caso o professor republique
                 atuais = snap.data().semanas.filter(s => String(s.semana) !== String(dados.semana));
             }
-            
             atuais.unshift(dados);
             return setDoc(ref, { semanas: atuais }, { merge: true });
         };
@@ -116,7 +95,6 @@
         planilha: [],
         diaAtivoIndex: 0,
         respostas: {},
-        abaZonasAberta: false,
 
         profAtleta: '', profSemana: '', profObjetivo: 'TAF 12 minutos', profPeriodo: '',
         profZonas: { Z1: '', Z2: '', Z3: '', Z4: '', Z5: '' },
@@ -130,7 +108,6 @@
         init() {
             const localFeed = localStorage.getItem('feedback_treinos_lucas');
             if (localFeed) this.respostas = JSON.parse(localFeed);
-            setTimeout(() => { this.inicializado = true; }, 1500);
         },
 
         async gerenciarAuth() {
@@ -138,53 +115,30 @@
             if (!this.email || !this.senha) { this.erroMsg = 'Preencha todos os campos.'; return; }
             try {
                 if (this.authModo === 'login') {
-                    const credencial = await window.executarLoginNuvem(this.email, this.senha);
-                    
-                    if (credencial.user) {
-                        // Define o usuário ativo no sistema
-                        this.user = credencial.user;
-                        
-                        // Verifica se é o e-mail mestre do treinador
-                        const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
-                        this.isProfessor = (credencial.user.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
-                        
-                        // Destrava a tela e renderiza o painel correspondente na hora
-                        this.inicializado = true;
-                    }
+                    await window.executarLoginNuvem(this.email, this.senha);
                 } else {
                     await window.executarCadastroNuvem(this.email, this.senha);
-                    this.sucessoMsg = 'Conta criada com sucesso! Mude para Login para acessar.';
-                    // Altera visualmente para o modo login para facilitar para o aluno
+                    this.sucessoMsg = 'Conta criada! Faça login.';
                     this.authModo = 'login';
                 }
-            } catch (err) {
-                console.error(err);
-                this.erroMsg = 'Dados incorretos ou falha de conexão.';
-            }
-        },
-
-        async deslogar() {
-            await window.executarDesconexao();
-            this.user = null;
+            } catch (err) { this.erroMsg = 'Falha no acesso.'; }
         },
 
         async publicarPlanilha() {
             this.erroMsg = ''; this.sucessoMsg = '';
-            if (!this.profAtleta || !this.profSemana || !this.profPeriodo) { this.erroMsg = 'Campos obrigatórios ausentes.'; return; }
+            if (!this.profAtleta || !this.profSemana) { this.erroMsg = 'Campos obrigatórios ausentes.'; return; }
             try {
                 const estrutura = {
                     semana: this.profSemana, atleta: this.profAtleta, objetivo: this.profObjetivo, periodo: this.profPeriodo, zonas: this.profZonas,
                     dias: this.profDias.map(d => ({ id: 's'+this.profSemana+'-'+d.id, nome: d.nome, aquecimento: d.aquecimento||'-', principal: d.principal||'Off', desaquecimento: d.desaquecimento||'-' }))
                 };
                 await window.salvarPlanilhaNuvem(this.profAtleta, estrutura);
-                this.sucessoMsg = 'Planilha gravada na nuvem!';
-                this.profSemana = ''; this.profPeriodo = '';
-                this.profDias.forEach(d => { d.aquecimento = ''; d.principal = ''; d.desaquecimento = ''; });
+                this.sucessoMsg = 'Planilha gravada!';
             } catch (e) { this.erroMsg = 'Erro ao salvar.'; }
         },
 
         toggleStatus(id, valor) {
-            if (!this.respostas[id]) this.respostas[id] = { status: '', pace: '', tempo: '', feedback: '' };
+            if (!this.respostas[id]) this.respostas[id] = { status: '' };
             this.respostas[id].status = (this.respostas[id].status === valor) ? '' : valor;
             localStorage.setItem('feedback_treinos_lucas', JSON.stringify(this.respostas));
             window.salvarFeedbackNuvem(id, this.respostas[id]);
@@ -192,10 +146,7 @@
     }">
 
         <div x-show="!inicializado" class="fixed inset-0 bg-neutral-950 flex items-center justify-center z-50">
-            <div class="text-center space-y-2">
-                <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p class="text-[10px] uppercase tracking-widest font-bold text-neutral-500">Iniciando Protocolo...</p>
-            </div>
+            <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
 
         <div x-show="inicializado" x-cloak>
@@ -204,164 +155,85 @@
                 <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl">
                     <div class="text-center mb-6">
                         <span class="text-[10px] font-black uppercase tracking-widest text-amber-500">SISTEMA DE CORRIDA</span>
-                        <h2 class="text-2xl font-black tracking-tight mt-1" x-text="authModo === 'login' ? 'Entrar no Painel' : 'Criar Nova Conta'"></h2>
+                        <h2 class="text-2xl font-black tracking-tight mt-1" x-text="authModo === 'login' ? 'Entrar no Painel' : 'Criar Conta'"></h2>
                     </div>
                     <div class="space-y-4">
-                        <div>
-                            <label class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">E-mail de Acesso</label>
-                            <input type="email" x-model="email" class="w-full bg-neutral-950 border border-neutral-800 py-3 px-4 rounded-xl text-white focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Senha</label>
-                            <input type="password" x-model="senha" class="w-full bg-neutral-950 border border-neutral-800 py-3 px-4 rounded-xl text-white focus:outline-none">
-                        </div>
-                        <div x-show="erroMsg" class="text-xs font-bold text-rose-500 bg-rose-500/10 p-3 rounded-xl" x-text="erroMsg" x-cloak></div>
-                        <div x-show="sucessoMsg" class="text-xs font-bold text-emerald-500 bg-emerald-500/10 p-3 rounded-xl" x-text="sucessoMsg" x-cloak></div>
-                        
-                        <button @click="gerenciarAuth()" class="w-full bg-amber-500 hover:bg-amber-600 text-neutral-950 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer">
-                            <span x-text="authModo === 'login' ? 'Acessar Treinos' : 'Confirmar Registro'"></span>
-                        </button>
-                        <div class="text-center mt-2">
-                            <button @click="authModo = (authModo === 'login' ? 'cadastro' : 'login'); erroMsg='';" class="text-xs text-neutral-400 underline cursor-pointer" x-text="authModo === 'login' ? 'Não tem conta? Cadastre-se' : 'Já possui acesso? Faça Login'"></button>
-                        </div>
+                        <input type="email" x-model="email" placeholder="E-mail" class="w-full bg-neutral-950 border border-neutral-800 py-3 px-4 rounded-xl text-white outline-none">
+                        <input type="password" x-model="senha" placeholder="Senha" class="w-full bg-neutral-950 border border-neutral-800 py-3 px-4 rounded-xl text-white outline-none">
+                        <div x-show="erroMsg" class="text-xs font-bold text-rose-500 bg-rose-500/10 p-3 rounded-xl" x-text="erroMsg"></div>
+                        <div x-show="sucessoMsg" class="text-xs font-bold text-emerald-500 bg-emerald-500/10 p-3 rounded-xl" x-text="sucessoMsg"></div>
+                        <button @click="gerenciarAuth()" class="w-full bg-amber-500 text-neutral-950 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer">Confirmar</button>
+                        <button @click="authModo = (authModo === 'login' ? 'cadastro' : 'login')" class="w-full text-xs text-neutral-400 underline" x-text="authModo === 'login' ? 'Cadastre-se' : 'Fazer Login'"></button>
                     </div>
                 </div>
             </div>
 
             <div x-show="user" x-cloak>
-                <div class="w-full max-w-md mx-auto pt-4 px-4 flex justify-between items-center text-xs">
-                    <span class="text-neutral-400 font-mono" x-text="'Conta: ' + user?.email"></span>
-                    <button @click="deslogar()" class="text-rose-500 font-bold uppercase tracking-wider cursor-pointer">Sair [x]</button>
+                <div class="w-full max-w-md mx-auto pt-4 px-4 flex justify-between items-center text-[10px] text-neutral-500 font-bold uppercase tracking-widest">
+                    <span x-text="user?.email"></span>
+                    <button @click="window.executarDesconexao()" class="text-rose-500 underline cursor-pointer">Sair</button>
                 </div>
 
                 <div x-show="isProfessor" class="w-full max-w-md mx-auto px-4 mt-4 space-y-4">
                     <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl">
-                        <div class="mb-4">
-                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-500 block">PAINEL DO TREINADOR</span>
-                            <h2 class="text-xl font-black tracking-tight">Prescrever Planilha</h2>
-                        </div>
-                        <div class="space-y-4 text-xs">
+                        <h2 class="text-xl font-black tracking-tight mb-4">Prescrever Planilha</h2>
+                        <div class="space-y-4">
+                            <input type="text" x-model="profAtleta" placeholder="E-mail do Aluno" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
                             <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="font-bold text-neutral-400 uppercase block mb-1">E-mail do Aluno</label>
-                                    <input type="text" x-model="profAtleta" placeholder="aluno@email.com" class="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-white focus:outline-none">
-                                </div>
-                                <div>
-                                    <label class="font-bold text-neutral-400 uppercase block mb-1">Semana Nº</label>
-                                    <input type="text" x-model="profSemana" placeholder="1" class="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-white focus:outline-none">
-                                </div>
+                                <input type="text" x-model="profSemana" placeholder="Semana Nº" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
+                                <input type="text" x-model="profPeriodo" placeholder="Período" class="w-full bg-neutral-950 border border-neutral-800 p-3 rounded-xl text-xs">
                             </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="font-bold text-neutral-400 uppercase block mb-1">Objetivo</label>
-                                    <input type="text" x-model="profObjetivo" class="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-white focus:outline-none">
+                            <template x-for="(dia, idx) in profDias" :key="idx">
+                                <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+                                    <span class="font-black text-amber-500 text-[10px]" x-text="dia.nome"></span>
+                                    <textarea placeholder="Treino Principal" x-model="dia.principal" class="w-full bg-neutral-900 p-2 rounded-lg text-[11px] resize-none outline-none"></textarea>
                                 </div>
-                                <div>
-                                    <label class="font-bold text-neutral-400 uppercase block mb-1">Período</label>
-                                    <input type="text" x-model="profPeriodo" placeholder="DD/MM - DD/MM" class="w-full bg-neutral-950 border border-neutral-800 p-2.5 rounded-xl text-white focus:outline-none">
-                                </div>
-                            </div>
-
-                            <div class="border-t border-neutral-800 pt-3">
-                                <label class="font-black text-amber-500 uppercase block mb-2">Zonas de Ritmo (Pace)</label>
-                                <div class="grid grid-cols-5 gap-1">
-                                    <template x-for="i in ['Z1','Z2','Z3','Z4','Z5']" :key="i">
-                                        <div>
-                                            <span class="text-[9px] font-bold block text-center" x-text="i"></span>
-                                            <input type="text" x-model="profZonas[i]" class="w-full bg-neutral-950 border border-neutral-800 p-1 rounded-lg text-center font-mono text-[11px] text-white focus:outline-none">
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-neutral-800 pt-3 space-y-2">
-                                <label class="font-black text-neutral-200 uppercase block">Cronograma Diário</label>
-                                <template x-for="(dia, idx) in profDias" :key="idx">
-                                    <div class="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-1.5">
-                                        <span class="font-black text-amber-500 text-[10px]" x-text="dia.nome"></span>
-                                        <input type="text" placeholder="Aquecimento" x-model="dia.aquecimento" class="w-full bg-neutral-900 p-2 rounded-lg text-[11px] text-white focus:outline-none">
-                                        <textarea placeholder="Comando Principal" rows="2" x-model="dia.principal" class="w-full bg-neutral-900 p-2 rounded-lg text-[11px] text-white focus:outline-none resize-none"></textarea>
-                                        <input type="text" placeholder="Desaquecimento" x-model="dia.desaquecimento" class="w-full bg-neutral-900 p-2 rounded-lg text-[11px] text-white focus:outline-none">
-                                    </div>
-                                </template>
-                            </div>
-
-                            <div x-show="erroMsg" class="text-xs font-bold text-rose-500 bg-rose-500/10 p-3 rounded-xl" x-text="erroMsg"></div>
-                            <div x-show="sucessoMsg" class="text-xs font-bold text-emerald-500 bg-emerald-500/10 p-3 rounded-xl" x-text="sucessoMsg"></div>
-                            <button @click="publicarPlanilha()" class="w-full bg-emerald-500 text-neutral-950 py-3 rounded-xl font-black uppercase tracking-widest cursor-pointer">
-                                🚀 Publicar na Nuvem
-                            </button>
+                            </template>
+                            <button @click="publicarPlanilha()" class="w-full bg-emerald-500 text-neutral-950 py-3 rounded-xl font-black uppercase tracking-widest cursor-pointer">🚀 Publicar</button>
                         </div>
                     </div>
                 </div>
 
                 <div x-show="!isProfessor" class="w-full max-w-md mx-auto mt-2">
-                    <div x-show="planilha.length === 0" class="px-4 pt-10 text-center">
-                        <p class="text-xs font-medium text-neutral-400">Nenhuma planilha ativa localizada para este e-mail.</p>
-                    </div>
+                    <div x-show="planilha.length === 0" class="px-4 pt-10 text-center text-xs text-neutral-500">Nenhum treino disponível.</div>
                     
                     <div x-show="planilha.length > 0">
                         <header class="px-4 pt-4">
                             <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl">
-                                <span class="text-[10px] font-black uppercase tracking-widest text-amber-500 block">📋 PROTOCOLO DE TREINO</span>
-                                <div class="flex justify-between items-center gap-2 mt-1">
-                                    <h1 class="text-xl font-black tracking-tight truncate" x-text="planilha[semanaAtiva]?.atleta"></h1>
-                                    <select x-model="semanaAtiva" class="bg-neutral-800 border border-neutral-700 text-[11px] font-extrabold py-1.5 px-3 rounded-xl text-white focus:outline-none">
-                                        <template x-for="(sem, index) in planilha" :key="index">
-                                            <option :value="index" x-text="'Semana ' + sem.semana"></option>
+                                <span class="text-[10px] font-black uppercase tracking-widest text-amber-500 block">📋 PROTOCOLO</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <h1 class="text-xl font-black tracking-tight truncate" x-text="'Semana ' + (planilha[semanaAtiva]?.semana || '1')"></h1>
+                                    <select x-model="semanaAtiva" class="bg-neutral-800 border border-neutral-700 text-[10px] font-bold p-1 rounded-lg">
+                                        <template x-for="(s, i) in planilha" :key="i">
+                                            <option :value="i" x-text="'S' + s.semana"></option>
                                         </template>
                                     </select>
                                 </div>
-                                <div class="flex justify-between items-center mt-3 pt-3 border-t border-neutral-800 text-xs">
-                                    <div>
-                                        <span class="text-[9px] text-neutral-500 uppercase font-bold block">Objetivo</span>
-                                        <span class="font-bold text-xs" x-text="planilha[semanaAtiva]?.objetivo"></span>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="text-[9px] text-neutral-500 uppercase font-bold block">Período</span>
-                                        <span class="font-bold text-xs" x-text="planilha[semanaAtiva]?.periodo"></span>
-                                    </div>
-                                </div>
+                                <div class="mt-2 text-xs font-bold text-neutral-400" x-text="planilha[semanaAtiva]?.periodo"></div>
                             </div>
                         </header>
 
                         <nav class="px-4 mt-3">
                             <div class="bg-neutral-900 border border-neutral-800 p-1.5 rounded-2xl flex gap-1">
-                                <template x-for="(dia, index) in planilha[semanaAtiva]?.dias" :key="dia.id">
-                                    <button @click="diaAtivoIndex = index" :class="diaAtivoIndex === index ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400'" class="flex-1 py-2.5 rounded-xl text-center text-xs font-bold cursor-pointer flex flex-col items-center gap-1">
+                                <template x-for="(dia, index) in (planilha[semanaAtiva]?.dias || [])" :key="index">
+                                    <button @click="diaAtivoIndex = index" :class="diaAtivoIndex === index ? 'bg-amber-500 text-neutral-950' : 'text-neutral-400'" class="flex-1 py-2.5 rounded-xl text-center text-[10px] font-black cursor-pointer">
                                         <span x-text="dia.nome.substring(0,3)"></span>
-                                        <div class="w-1.5 h-1.5 rounded-full" :class="respostas[dia.id]?.status === 'Feito' ? 'bg-emerald-500' : respostas[dia.id]?.status === 'Adaptei' ? 'bg-amber-400' : respostas[dia.id]?.status === 'Off' ? 'bg-rose-500' : 'bg-neutral-800'"></div>
                                     </button>
                                 </template>
                             </div>
                         </nav>
 
-                        <main class="px-4 mt-3" x-show="planilha[semanaAtiva]?.dias[diaAtivoIndex]">
+                        <main class="px-4 mt-3" x-show="planilha[semanaAtiva]?.dias">
                             <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 space-y-4">
-                                <div class="p-4 bg-neutral-950 border border-neutral-800/60 rounded-2xl space-y-2">
-                                    <div x-show="planilha[semanaAtiva]?.dias[diaAtivoIndex]?.aquecimento !== '-'">
-                                        <span class="text-[9px] text-amber-500/70 font-black uppercase">Aquecimento</span>
-                                        <p class="text-xs text-neutral-300" x-text="planilha[semanaAtiva]?.dias[diaAtivoIndex]?.aquecimento"></p>
-                                    </div>
-                                    <div>
-                                        <span class="text-[9px] text-amber-500 font-black uppercase">Comando Principal</span>
-                                        <p class="text-sm font-bold text-neutral-50 leading-relaxed" x-text="planilha[semanaAtiva]?.dias[diaAtivoIndex]?.principal"></p>
-                                    </div>
-                                    <div x-show="planilha[semanaAtiva]?.dias[diaAtivoIndex]?.desaquecimento !== '-'">
-                                        <span class="text-[9px] text-neutral-500 font-black uppercase">Desaquecimento</span>
-                                        <p class="text-xs text-neutral-400" x-text="planilha[semanaAtiva]?.dias[diaAtivoIndex]?.desaquecimento"></p>
-                                    </div>
+                                <div class="p-4 bg-neutral-950 border border-neutral-800 rounded-2xl">
+                                    <span class="text-[9px] text-amber-500 font-black uppercase">Treino</span>
+                                    <p class="text-sm font-bold text-neutral-50" x-text="planilha[semanaAtiva].dias[diaAtivoIndex]?.principal || 'Off'"></p>
                                 </div>
 
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-[9px] font-black text-neutral-500 uppercase block mb-1.5">Status do Treino</span>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Feito')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Feito' ? 'bg-emerald-500 text-neutral-950 font-black' : 'bg-neutral-950 text-neutral-400'" class="py-2.5 rounded-xl text-xs font-bold border border-neutral-800">✓ Feito</button>
-                                            <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Adaptei')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Adaptei' ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-950 text-neutral-400'" class="py-2.5 rounded-xl text-xs font-bold border border-neutral-800">⚠️ Adaptei</button>
-                                            <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Off')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Off' ? 'bg-rose-500 text-white font-black' : 'bg-neutral-950 text-neutral-400'" class="py-2.5 rounded-xl text-xs font-bold border border-neutral-800">💤 Off</button>
-                                        </div>
-                                    </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Feito')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Feito' ? 'bg-emerald-500 text-neutral-950' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Feito</button>
+                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Adaptei')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Adaptei' ? 'bg-amber-500 text-neutral-950' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Adaptei</button>
+                                    <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex]?.id, 'Off')" :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex]?.id]?.status === 'Off' ? 'bg-rose-500 text-white' : 'bg-neutral-950'" class="py-2.5 rounded-xl text-[10px] font-black border border-neutral-800">Off</button>
                                 </div>
                             </div>
                         </main>
