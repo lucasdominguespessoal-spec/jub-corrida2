@@ -45,28 +45,28 @@
                         const docRef = doc(db, "planilhas", usuario.email.toLowerCase().trim());
                         let docSnap = await getDoc(docRef);
                         
-                        if (docSnap.exists() && docSnap.data().semanas) {
-                            listaPlanilhas = docSnap.data().semanas;
-                        } else {
-                            // Se não achar a dele, tenta carregar o documento padrão
-                            const docPadrao = doc(db, "planilhas", "Lucas Domingues");
-                            let snapPadrao = await getDoc(docPadrao);
-                            if (snapPadrao.exists() && snapPadrao.data().semanas) {
-                                listaPlanilhas = snapPadrao.data().semanas;
+                        if (docSnap.exists()) {
+                            const dadosBanco = docSnap.data();
+                            
+                            // Se os dados vierem direto no formato novo solto do professor
+                            if (dadosBanco.dias || dadosBanco.semana) {
+                                listaPlanilhas = [dadosBanco]; // Envelopa em array para o Alpine ler
+                            } else if (dadosBanco.semanas) {
+                                listaPlanilhas = dadosBanco.semanas;
                             }
                         }
                     } catch (e) { 
-                        console.error("Erro ao buscar planilha do aluno:", e); 
+                        console.error("Erro ao buscar planilha:", e); 
                     }
                 }
                 
-                // Força a atualização dos dados no Alpine.js para o Aluno ou Professor
+                // Força a injeção direta no painel visual
                 const painel = document.getElementById('app-root');
                 if (painel && painel.__x) {
                     painel.__x.$data.user = usuario;
                     painel.__x.$data.isProfessor = isProf;
                     painel.__x.$data.planilha = listaPlanilhas;
-                    painel.__x.$data.semanaAtiva = 0; // Garante que abre na primeira semana da lista
+                    painel.__x.$data.semanaAtiva = 0;
                     painel.__x.$data.inicializado = true;
                 }
             } else {
