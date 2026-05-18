@@ -8,44 +8,77 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
     <script src="treinos.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* Base da Paleta Esportiva e Moderna */
+        :root {
+            --cor-fundo-escuro: #030303;
+            --cor-sotaque: #F97316; /* Laranja Neon Acobreado */
+            --cor-sotaque-hover: #EA580C;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: var(--cor-fundo-escuro);
+        }
+
         [x-cloak] { display: none !important; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* Animações suaves de transição */
         .card-transition { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Efeito Glassmorphism para o Cabeçalho */
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
 
-        /* TRAVA TOTAL ANTI-ZOOM */
+        /* Trava total anti-zoom mobile */
         input[type="text"], textarea, select { font-size: 16px !important; }
 
-        /* 🖨️ GRID COMPACTO DE PÁGINA ÚNICA PARA O PDF (A4 SINGLE PAGE) */
+        /* 🖨️ LAYOUT DE IMPRESSÃO PDF: REDESENHADO COMO TIMELINE VERTICAL MODERNA (SINGLE PAGE) */
         @media print {
-            @page { size: A4 portrait; margin: 8mm !important; }
-            body { background: white !important; color: #111827 !important; padding: 0 !important; margin: 0 !important; font-size: 11px !important; }
+            @page { size: A4 portrait; margin: 10mm !important; }
+            body { background: white !important; color: #111827 !important; padding: 0 !important; margin: 0 !important; font-size: 11pt !important; }
             .no-print { display: none !important; }
             
-            .print-card { background: white !important; border: none !important; border-bottom: 2px solid #111827 !important; color: black !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 0 8px 0 !important; margin-bottom: 12px !important; }
+            /* Cabeçalho Slim do Relatório */
+            .print-card { background: white !important; border: none !important; color: black !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; margin-bottom: 20px !important; }
             .print-text { color: black !important; }
-            .print-bg-dark { background: #f9fafb !important; padding: 6px 10px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; }
+            .print-bg-dark { background: #f9fafb !important; padding: 8px 12px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important; margin-top: 5px !important; }
             
-            .print-grid-container { display: grid !important; grid-template-cols: 1fr 1fr !important; gap: 8px !important; }
-            .print-quadrante { background: #ffffff !important; border: 1px solid #e5e7eb !important; border-radius: 10px !important; padding: 10px !important; display: flex !important; flex-col: justify-between !important; page-break-inside: avoid !important; }
-            .print-day-title { font-size: 11px !important; font-weight: 900 !important; text-transform: uppercase !important; color: #111827 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid #f3f4f6 !important; padding-bottom: 4px !important; margin-bottom: 6px !important; }
+            /* Estrutura de Timeline Vertical */
+            .print-timeline-container { position: relative !important; padding-left: 20px !important; margin-top: 15px !important; }
+            .print-timeline-line { position: absolute !important; left: 0 !important; top: 0 !important; bottom: 0 !important; width: 2px !important; background: #e5e7eb !important; }
             
-            .print-status-badge { font-size: 8px !important; font-weight: 800 !important; text-transform: uppercase !important; padding: 1px 6px !important; border-radius: 4px !important; border: 1px solid #cbd5e1 !important; background: #f3f4f6 !important; }
+            /* Item da Timeline (Quadrante Redesenhado) */
+            .print-quadrante { position: relative !important; margin-bottom: 16px !important; padding-bottom: 12px !important; page-break-inside: avoid !important; }
+            .print-quadrante::before { content: '' !important; position: absolute !important; left: -24px !important; top: 2px !important; width: 10px !important; height: 10px !important; background: #fff !important; border: 3px solid #111827 !important; border-radius: 50% !important; z-index: 10 !important; }
+            
+            /* Nome do Dia e Status na Timeline */
+            .print-day-title { font-size: 11.5pt !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #0f172a !important; display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 4px !important; }
+            
+            /* Micro Pílula de Status no PDF */
+            .print-status-badge { font-size: 8pt !important; font-weight: 800 !important; text-transform: uppercase !important; padding: 1px 6px !important; border-radius: 4px !important; border: 1px solid #cbd5e1 !important; background: #f3f4f6 !important; }
             .status-feito { background: #ecfdf5 !important; color: #065f46 !important; border-color: #a7f3d0 !important; }
             .status-adaptei { background: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
             .status-off { background: #fef2f2 !important; color: #991b1b !important; border-color: #fca5a5 !important; }
 
-            .print-prescription { font-size: 10.5px !important; color: #374151 !important; line-height: 1.35 !important; font-weight: 600 !important; }
-            .print-sub-info { font-size: 9px !important; color: #6b7280 !important; margin-top: 1px !important; display: block !important; }
+            /* Prescrição Condensada */
+            .print-prescription { font-size: 10.5pt !important; color: #1e293b !important; line-height: 1.4 !important; font-weight: 600 !important; }
+            .print-sub-info { font-size: 9pt !important; color: #64748b !important; font-weight: normal !important; display: block !important; margin-top: 1px !important; }
             
-            .print-metrics { display: flex !important; gap: 10px !important; font-size: 10px !important; font-family: monospace !important; font-weight: bold !important; background: #f8fafc !important; padding: 4px 8px !important; border-radius: 6px !important; border: 1px solid #e2e8f0 !important; margin-top: 6px !important; color: #334155 !important; }
-            .print-feedback-box { font-size: 9.5px !important; color: #475569 !important; font-style: italic !important; margin-top: 5px !important; padding-left: 6px !important; border-left: 2px solid #cbd5e1 !important; line-height: 1.3 !important; }
+            /* Métricas e Feedback em Linhas Horizontais Slim */
+            .print-metrics-row { display: flex !important; gap: 12px !important; font-family: 'Roboto Mono', monospace !important; font-size: 9.5pt !important; font-weight: bold !important; color: #111827 !important; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; padding: 4px 8px !important; margin-top: 8px !important; }
+            .print-metrics-label { color: #94a3b8 !important; font-size: 8pt !important; font-weight: normal !important; text-transform: uppercase !important; }
+            .print-feedback-box { font-size: 9pt !important; color: #475569 !important; font-style: italic !important; margin-top: 6px !important; padding-left: 8px !important; border-left: 2px solid #cbd5e1 !important; line-height: 1.35 !important; }
         }
     </style>
 </head>
@@ -118,192 +151,175 @@
       :class="isDark ? 'bg-neutral-950 text-neutral-50' : 'bg-neutral-100 text-neutral-900'">
 
     <div id="toast-sucesso" 
-         :class="isDark ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-white border-neutral-200 text-neutral-700'"
-         class="fixed top-6 left-1/2 -translate-x-1/2 border text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-2 z-50 pointer-events-none no-print">
+         class="fixed top-6 left-1/2 -translate-x-1/2 border text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-2 z-50 pointer-events-none no-print"
+         :class="isDark ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-white border-neutral-200 text-neutral-700'">
         ✓ Sincronizado
     </div>
 
-    <header class="w-full max-w-md mx-auto pt-6 px-4" x-show="planilha.length > 0" x-cloak>
-        <div :class="isDark ? 'bg-neutral-900 border-neutral-800/60' : 'bg-white border-neutral-200 shadow-sm'"
-             class="border rounded-3xl p-6 shadow-2xl relative overflow-hidden print-card">
+    <header class="w-full max-w-md mx-auto pt-5 px-4 sticky top-0 z-50 no-print" x-show="planilha.length > 0" x-cloak>
+        <div class="glass-panel border rounded-full px-5 py-3 shadow-2xl relative overflow-hidden transition-all flex items-center justify-between gap-3">
+            <div class="absolute -right-5 -top-5 w-16 h-16 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
             
-            <div class="flex flex-col gap-1">
-                <span class="text-[10px] font-black uppercase tracking-widest text-amber-500 block">
-                    📋 PROTOCOLO DE TREINO
-                </span>
-                
-                <div class="flex justify-between items-center gap-2 w-full">
-                    <h1 :class="isDark ? 'text-white' : 'text-neutral-900'" class="text-xl font-black tracking-tight print-text truncate max-w-[65%]" x-text="planilha[semanaAtiva].atleta"></h1>
-                    
-                    <div class="relative no-print shrink-0 max-w-[35%]">
-                        <select x-model="semanaAtiva" 
-                                :class="isDark ? 'bg-neutral-800/80 border-neutral-700/60 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-800'"
-                                class="appearance-none border text-[11px] font-extrabold py-1.5 pl-2.5 pr-6 rounded-xl focus:outline-none cursor-pointer transition-all">
-                            <template x-for="(sem, index) in planilha" :key="index">
-                                <option :value="index" x-text="'Semana ' + sem.semana" :selected="index === 0"></option>
-                            </template>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-neutral-400 text-[9px]">▼</div>
-                    </div>
-
-                    <div class="hidden print:block text-right shrink-0">
-                        <span class="text-xs font-black font-mono tracking-wider text-neutral-900" x-text="'COORT ' + planilha[semanaAtiva].semana"></span>
-                    </div>
-                </div>
-
-                <div class="mt-1.5">
-                    <button @click="alternarTema()" 
-                            class="no-print px-2 py-0.5 rounded-md border text-[9px] font-bold tracking-wider uppercase cursor-pointer active:scale-95 transition-all"
-                            :class="isDark ? 'bg-neutral-800 text-amber-400 border-neutral-700/60' : 'bg-neutral-100 text-neutral-600 border-neutral-300'">
-                        🎨 EXIBIÇÃO: <span x-text="isDark ? 'ESCURO' : 'CLARO'"></span>
-                    </button>
-                </div>
-            </div>
-
-            <div :class="isDark ? 'border-neutral-800' : 'border-neutral-100'" class="flex justify-between items-center mt-3 pt-3 border-t print-bg-dark text-xs rounded-xl">
-                <div class="flex flex-col">
-                    <span class="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Objetivo</span>
-                    <span :class="isDark ? 'text-neutral-200' : 'text-neutral-700'" class="font-bold print-text text-xs" x-text="planilha[semanaAtiva].objetivo"></span>
-                </div>
-                <div class="flex flex-col text-right">
-                    <span class="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Período</span>
-                    <span :class="isDark ? 'text-neutral-200' : 'text-neutral-700'" class="font-bold print-text text-xs" x-text="planilha[semanaAtiva].periodo"></span>
-                </div>
-            </div>
-            
-            <div class="mt-3 pt-1 no-print">
-                <button @click="abaZonasAberta = !abaZonasAberta" 
-                        :class="isDark ? 'bg-neutral-950/40 border-neutral-800/50 text-neutral-400 hover:bg-neutral-950/80' : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'"
-                        class="w-full flex justify-between items-center border p-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all">
-                    <span>⏱️ Consultar Zonas de Treinamento</span>
-                    <span class="text-[9px]" x-text="abaZonasAberta ? 'Ocultar ▲' : 'Expandir ▼'"></span>
+            <div class="flex items-center gap-2">
+                <button @click="alternarTema()" 
+                        class="shrink-0 w-7 h-7 rounded-full border flex items-center justify-center cursor-pointer active:scale-90 transition-all shadow-inner"
+                        :class="isDark ? 'bg-neutral-800 text-amber-400 border-neutral-700/60' : 'bg-neutral-100 text-neutral-600 border-neutral-300'">
+                    <span class="text-sm">🎨</span>
                 </button>
-                
-                <div x-show="abaZonasAberta" 
-                     :class="isDark ? 'bg-neutral-950 border-neutral-900' : 'bg-neutral-50 border-neutral-200'"
-                     class="mt-2 space-y-1.5 p-4 rounded-xl font-mono text-xs shadow-inner">
-                    <template x-for="(ritmo, zona) in planilha[semanaAtiva].zonas">
-                        <div :class="isDark ? 'border-neutral-900' : 'border-neutral-200/60'" class="flex justify-between border-b pb-1 last:border-none last:pb-0">
-                            <span class="font-bold text-amber-500/90" x-text="zona"></span>
-                            <span :class="isDark ? 'text-neutral-300' : 'text-neutral-600'" class="font-medium" x-text="ritmo"></span>
-                        </div>
-                    </template>
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-amber-500 block">
+                        PROTOCOLO DE TREINO
+                    </span>
+                    <h1 class="text-base font-black tracking-tight truncate max-w-[160px]"
+                        :class="isDark ? 'text-white' : 'text-neutral-900'"
+                        x-text="planilha[semanaAtiva].atleta"></h1>
                 </div>
+            </div>
+
+            <div class="relative shrink-0 no-scrollbar">
+                <select x-model="semanaAtiva" 
+                        class="appearance-none border text-[11px] font-black uppercase tracking-wider py-1.5 pl-3 pr-7 rounded-full focus:outline-none cursor-pointer transition-all active:scale-95 shadow-lg shadow-black/5"
+                        :class="isDark ? 'bg-neutral-950 border-neutral-800/60 text-amber-500/90' : 'bg-neutral-50 border-neutral-300 text-amber-600'">
+                    <template x-for="(sem, index) in planilha" :key="index">
+                        <option :value="index" x-text="'SEMANA ' + sem.semana" :selected="index === 0"></option>
+                    </template>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500 text-[9px]">▼</div>
             </div>
         </div>
     </header>
 
-    <div class="w-full max-w-md mx-auto px-4 mt-4 no-print" x-show="planilha.length > 0" x-cloak>
-        <button @click="exportarPDF()" 
-                class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-950 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md active:scale-[0.98] cursor-pointer transition-all flex items-center justify-center gap-2">
-            📄 Gerar Relatório PDF
-        </button>
-    </div>
+    <header class="hidden print:block print-card w-full max-w-4xl mx-auto pt-6 px-4">
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-neutral-500 block">
+                    PROTOCOLO DE TREINO - RELATÓRIO DE PERFORMANCE
+                </span>
+                <h1 class="text-2xl font-black tracking-tight mt-0.5 text-neutral-950" x-text="planilha[semanaAtiva].atleta"></h1>
+            </div>
+            <div class="text-right">
+                <span class="text-xs font-bold font-mono tracking-wider bg-neutral-900 text-white px-3 py-1.5 rounded-lg block" x-text="'COORT ' + planilha[semanaAtiva].semana"></span>
+            </div>
+        </div>
+        <div class="print-bg-dark flex justify-between items-center text-xs">
+            <div class="flex flex-col">
+                <span class="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Objetivo</span>
+                <span class="font-bold text-neutral-800 text-sm" x-text="planilha[semanaAtiva].objetivo"></span>
+            </div>
+            <div class="flex flex-col text-right">
+                <span class="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Período Vigente</span>
+                <span class="font-bold text-neutral-800 text-sm" x-text="planilha[semanaAtiva].periodo"></span>
+            </div>
+        </div>
+    </header>
 
-    <nav class="w-full max-w-md mx-auto px-4 mt-3 no-print" x-show="planilha.length > 0" x-cloak>
-        <div :class="isDark ? 'bg-neutral-900/30 border-neutral-900' : 'bg-white border-neutral-200/80 shadow-sm'" 
-             class="border p-1.5 rounded-2xl flex justify-between items-center gap-1">
+    <nav class="w-full max-w-md mx-auto px-4 mt-6 no-print" x-show="planilha.length > 0" x-cloak>
+        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             <template x-for="(dia, index) in planilha[semanaAtiva].dias" :key="dia.id">
                 <button @click="diaAtivoIndex = index"
+                        class="px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border shadow-lg shadow-black/5 active:scale-95"
                         :class="diaAtivoIndex === index 
-                                ? 'bg-amber-500 text-neutral-950 font-black shadow-lg shadow-amber-500/10' 
-                                : (isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-500 hover:text-neutral-800')"
-                        class="flex-1 py-3 rounded-xl text-center text-xs font-bold transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1">
-                    <span x-text="dia.nome.substring(0,3)"></span>
+                                ? 'bg-orange-600 text-white font-extrabold shadow-orange-600/10' 
+                                : (isDark ? 'bg-neutral-900/40 text-neutral-400 border-neutral-800/40' : 'bg-white text-neutral-600 border-neutral-200 shadow-sm')">
                     
                     <div class="w-1.5 h-1.5 rounded-full transition-colors" 
-                         :class="respostas[dia.id]?.status === 'Feito' ? (diaAtivoIndex === index ? 'bg-neutral-950' : 'bg-emerald-500') : 
-                                 respostas[dia.id]?.status === 'Adaptei' ? (diaAtivoIndex === index ? 'bg-neutral-950' : 'bg-amber-400') : 
-                                 respostas[dia.id]?.status === 'Off' ? (diaAtivoIndex === index ? 'bg-neutral-950' : 'bg-rose-500') : 
+                         :class="respostas[dia.id]?.status === 'Feito' ? (diaAtivoIndex === index ? 'bg-white' : 'bg-emerald-500') : 
+                                 respostas[dia.id]?.status === 'Adaptei' ? (diaAtivoIndex === index ? 'bg-white' : 'bg-amber-400') : 
+                                 respostas[dia.id]?.status === 'Off' ? (diaAtivoIndex === index ? 'bg-white' : 'bg-rose-500') : 
                                  (isDark ? 'bg-neutral-800' : 'bg-neutral-200')"></div>
+                    
+                    <span x-text="dia.nome"></span>
                 </button>
             </template>
         </div>
     </nav>
 
-    <main class="w-full max-w-md mx-auto px-4 mt-3" x-show="planilha.length > 0 && planilha[semanaAtiva]" x-cloak>
+    <main class="w-full max-w-md mx-auto px-4 mt-2" x-show="planilha.length > 0 && planilha[semanaAtiva]" x-cloak>
         
-        <div class="no-print border rounded-3xl shadow-2xl overflow-hidden card-transition"
-             :class="[
-                isDark ? 'bg-neutral-900' : 'bg-white shadow-sm',
-                respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Feito' ? 'border-emerald-500/40' : 
-                respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Adaptei' ? 'border-amber-500/40' : 
-                respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Off' ? 'border-rose-500/40' : 
-                (isDark ? 'border-neutral-800/60' : 'border-neutral-200')
-             ]">
+        <div class="no-print overflow-hidden card-transition pt-1">
             
-            <div :class="isDark ? 'bg-neutral-800/20 border-neutral-800/40' : 'bg-neutral-50 border-neutral-100'" 
-                 class="px-5 py-4 border-b flex justify-between items-center">
-                <h2 :class="isDark ? 'text-white' : 'text-neutral-900'" class="font-black tracking-tight text-base" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].nome"></h2>
-                <span :class="isDark ? 'text-neutral-400 bg-neutral-950 border-neutral-800' : 'text-neutral-500 bg-neutral-100 border-neutral-200'" 
-                      class="text-[9px] font-black tracking-widest border px-3 py-1 rounded-full uppercase">CORRIDA DE RUA</span>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="font-black tracking-tight text-xl" :class="isDark ? 'text-white' : 'text-neutral-900'" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].nome"></h2>
+                <span class="text-[10px] font-black tracking-widest border px-3.5 py-1 rounded-full uppercase shadow-inner"
+                      :class="isDark ? 'text-neutral-400 bg-neutral-900/40 border-neutral-800/60' : 'text-neutral-500 bg-white border-neutral-200 shadow-sm'">CORRIDA DE RUA</span>
             </div>
 
-            <div class="p-5 space-y-5">
-                <div :class="isDark ? 'bg-neutral-950 border-neutral-800/40' : 'bg-neutral-50 border-neutral-200/60'" 
-                     class="p-4 rounded-2xl border space-y-3">
-                    <div :class="isDark ? 'border-neutral-900' : 'border-neutral-200/80'" class="pb-2 border-b" x-show="planilha[semanaAtiva].dias[diaAtivoIndex].aquecimento !== '-'">
-                        <span class="text-[9px] text-amber-500/70 uppercase font-black tracking-widest block">Aquecimento</span>
-                        <p :class="isDark ? 'text-neutral-300' : 'text-neutral-600'" class="text-xs mt-0.5 font-medium" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].aquecimento"></p>
-                    </div>
-                    <div>
-                        <span class="text-[9px] text-amber-500 uppercase font-black tracking-widest block">Comando Principal</span>
-                        <p :class="isDark ? 'text-neutral-50' : 'text-neutral-900'" class="text-sm font-bold mt-1 leading-relaxed tracking-wide" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].principal"></p>
-                    </div>
-                    <div :class="isDark ? 'border-neutral-900' : 'border-neutral-200/80'" class="pt-2 border-t" x-show="planilha[semanaAtiva].dias[diaAtivoIndex].desaquecimento !== '-'">
-                        <span class="text-[9px] text-neutral-500 uppercase font-black tracking-widest block">Desaquecimento</span>
-                        <p :class="isDark ? 'text-neutral-400' : 'text-neutral-600'" class="text-xs mt-0.5 font-medium" x-text="planilha[semanaAtiva].dias[desaquecimento]"></p>
+            <div class="space-y-6">
+                <div class="rounded-3xl p-5 border shadow-2xl card-transition transition-colors duration-300"
+                     :class="[
+                        isDark ? 'bg-neutral-900 shadow-black/10' : 'bg-white shadow-sm',
+                        respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Feito' ? 'border-emerald-600/40' : 
+                        respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Adaptei' ? 'border-amber-600/40' : 
+                        respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]?.status === 'Off' ? 'border-rose-600/40' : 
+                        (isDark ? 'border-neutral-800/60' : 'border-neutral-100')
+                     ]">
+                    <div class="space-y-4">
+                        <div x-show="planilha[semanaAtiva].dias[diaAtivoIndex].aquecimento !== '-'">
+                            <span class="text-[10px] text-orange-400 uppercase font-black tracking-widest block mb-0.5">Aquecimento</span>
+                            <p :class="isDark ? 'text-neutral-300' : 'text-neutral-600'" class="text-xs font-medium leading-relaxed" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].aquecimento"></p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-orange-500 uppercase font-black tracking-widest block mb-0.5">Comando Principal</span>
+                            <p :class="isDark ? 'text-neutral-50' : 'text-neutral-900'" class="text-sm font-bold mt-1 leading-relaxed tracking-wide" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].principal"></p>
+                        </div>
+                        <div x-show="planilha[semanaAtiva].dias[diaAtivoIndex].desaquecimento !== '-'">
+                            <span class="text-[10px] text-orange-400 uppercase font-black tracking-widest block mb-0.5">Desaquecimento</span>
+                            <p :class="isDark ? 'text-neutral-300' : 'text-neutral-600'" class="text-xs font-medium leading-relaxed" x-text="planilha[semanaAtiva].dias[diaAtivoIndex].desaquecimento"></p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="space-y-4" x-show="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]">
+                <div class="space-y-5" x-show="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id]">
                     <div>
-                        <span class="text-[9px] uppercase tracking-widest font-black text-neutral-500 block mb-2">Qual foi o status da sessão?</span>
-                        <div class="grid grid-cols-3 gap-2">
+                        <span class="text-[10px] uppercase tracking-widest font-black text-neutral-500 block mb-2.5">Como foi a execução?</span>
+                        
+                        <div class="flex gap-2.5">
                             <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Feito')"
-                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Feito' ? 'bg-emerald-500 text-neutral-950 font-black' : (isDark ? 'bg-neutral-950 text-neutral-400 border-neutral-900' : 'bg-neutral-50 text-neutral-500 border-neutral-200')"
-                                    class="py-3 px-1 rounded-xl text-xs border cursor-pointer transition-all text-center font-bold active:scale-95">
+                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Feito' ? 'bg-emerald-600 text-white font-black shadow-lg shadow-emerald-600/10' : (isDark ? 'bg-neutral-900 text-neutral-400 border-neutral-800' : 'bg-white text-neutral-500 border-neutral-200')"
+                                    class="py-2.5 px-4 rounded-full text-xs border cursor-pointer transition-all font-bold active:scale-95">
                                 ✓ Feito
                             </button>
                             <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Adaptei')"
-                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Adaptei' ? 'bg-amber-500 text-neutral-950 font-black' : (isDark ? 'bg-neutral-950 text-neutral-400 border-neutral-900' : 'bg-neutral-50 text-neutral-500 border-neutral-200')"
-                                    class="py-3 px-1 rounded-xl text-xs border cursor-pointer transition-all text-center font-bold active:scale-95">
+                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Adaptei' ? 'bg-amber-500 text-neutral-950 font-black shadow-lg shadow-amber-500/10' : (isDark ? 'bg-neutral-900 text-neutral-400 border-neutral-800' : 'bg-white text-neutral-500 border-neutral-200')"
+                                    class="py-2.5 px-4 rounded-full text-xs border cursor-pointer transition-all font-bold active:scale-95">
                                 ⚠️ Adaptei
                             </button>
                             <button @click="toggleStatus(planilha[semanaAtiva].dias[diaAtivoIndex].id, 'Off')"
-                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Off' ? 'bg-rose-500 text-white font-black' : (isDark ? 'bg-neutral-950 text-neutral-400 border-neutral-900' : 'bg-neutral-50 text-neutral-500 border-neutral-200')"
-                                    class="py-3 px-1 rounded-xl text-xs border cursor-pointer transition-all text-center font-bold active:scale-95">
+                                    :class="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].status === 'Off' ? 'bg-rose-600 text-white font-black shadow-lg shadow-rose-600/10' : (isDark ? 'bg-neutral-900 text-neutral-400 border-neutral-800' : 'bg-white text-neutral-500 border-neutral-200')"
+                                    class="py-2.5 px-4 rounded-full text-xs border cursor-pointer transition-all font-bold active:scale-95">
                                 💤 Off
                             </button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Pace Médio</label>
+                    <div class="grid grid-cols-2 gap-3.5">
+                        <div class="relative">
+                            <label class="absolute -top-2 left-3 bg-current px-1 text-[9px] text-neutral-500 font-bold uppercase tracking-widest block mb-1">Pace Médio</label>
                             <input type="text" placeholder="5'15''/km" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].pace"
-                                   :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
-                                   class="w-full border text-base text-center py-3 px-3 rounded-xl focus:outline-none font-mono transition-all">
+                                   class="w-full border text-base text-center py-3.5 px-3 rounded-2xl focus:outline-none focus:border-orange-500 font-mono transition-all font-semibold"
+                                   :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-900 shadow-sm'">
                         </div>
-                        <div>
-                            <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Tempo Total</label>
+                        <div class="relative">
+                            <label class="absolute -top-2 left-3 bg-current px-1 text-[9px] text-neutral-500 font-bold uppercase tracking-widest block mb-1">Tempo Total</label>
                             <input type="text" placeholder="24 min" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].tempo"
-                                   :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
-                                   class="w-full border text-base text-center py-3 px-3 rounded-xl focus:outline-none font-mono transition-all">
+                                   class="w-full border text-base text-center py-3.5 px-3 rounded-2xl focus:outline-none focus:border-orange-500 font-mono transition-all font-semibold"
+                                   :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-900 shadow-sm'">
                         </div>
                     </div>
 
-                    <div>
-                        <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Relato de Sensações</label>
-                        <textarea rows="2" placeholder="Como se sentiu durante a corrida?" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].feedback"
-                                  :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
-                                  class="w-full border text-base p-3 rounded-xl focus:outline-none leading-relaxed resize-none transition-all"></textarea>
+                    <div class="relative">
+                        <label class="absolute -top-2 left-3 bg-current px-1 text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Anotações e Percepção de Esforço</label>
+                        <textarea rows="2" placeholder="Como se sentiu durante a corrida? (Firme, dores, clima, etc.)" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].feedback"
+                                  class="w-full border text-xs p-4 rounded-2xl focus:outline-none focus:border-orange-500 leading-relaxed resize-none transition-all"
+                                  :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900 shadow-sm'"></textarea>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="hidden print:block print-grid-container">
+        <div class="hidden print:block print-timeline-container font-sans">
+            <div class="print-timeline-line"></div>
+            
             <template x-for="dia in planilha[semanaAtiva].dias" :key="dia.id">
                 <div class="print-quadrante">
                     <div class="print-day-title">
@@ -312,27 +328,47 @@
                               :class="respostas[dia.id]?.status === 'Feito' ? 'status-feito' : 
                                       respostas[dia.id]?.status === 'Adaptei' ? 'status-adaptei' : 
                                       respostas[dia.id]?.status === 'Off' ? 'status-off' : ''"
-                              x-text="respostas[dia.id]?.status || 'Não feito'"></span>
+                              x-text="respostas[dia.id]?.status || 'Não preenchido'"></span>
                     </div>
                     
-                    <div class="print-prescription">
-                        <span x-show="dia.aquecimento !== '-'" x-text="'[Aq: ' + dia.aquecimento + '] '"></span>
-                        <span x-text="dia.principal"></span>
-                        <span x-show="dia.desaquecimento !== '-'" x-text="' [Desaq: ' + dia.desaquecimento + ']'"></span>
-                    </div>
-                    
-                    <div class="print-metrics" x-show="respostas[dia.id]?.pace || respostas[dia.id]?.tempo">
-                        <span x-show="respostas[dia.id]?.pace">Pace: <span x-text="respostas[dia.id]?.pace"></span></span>
-                        <span x-show="respostas[dia.id]?.tempo">| Tempo: <span x-text="respostas[dia.id]?.tempo"></span></span>
-                    </div>
-                    
-                    <div class="print-feedback-box" x-show="respostas[dia.id]?.feedback">
-                        <span x-text="respostas[dia.id]?.feedback"></span>
+                    <div class="flex flex-col gap-1.5 pl-1.5 mt-2">
+                        <div class="print-prescription">
+                            <span class="text-neutral-950 font-semibold" x-text="dia.principal"></span>
+                        </div>
+                        
+                        <span class="print-sub-info" x-show="dia.aquecimento !== '-'" x-text="'↳ Aq: ' + dia.aquecimento"></span>
+                        <span class="print-sub-info" x-show="dia.desaquecimento !== '-'" x-text="'↳ Desaq: ' + dia.desaquecimento"></span>
+                        
+                        <div class="print-metrics-row" x-show="respostas[dia.id]?.pace || respostas[dia.id]?.tempo">
+                            <div class="flex items-center gap-1" x-show="respostas[dia.id]?.pace">
+                                <span class="print-metrics-label">PACE MÉDIO:</span>
+                                <span x-text="respostas[dia.id]?.pace"></span>
+                            </div>
+                            <div class="flex items-center gap-1" x-show="respostas[dia.id]?.tempo">
+                                <span class="print-metrics-label">DURAÇÃO TOTAL:</span>
+                                <span x-text="respostas[dia.id]?.tempo"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="print-feedback-box" x-show="respostas[dia.id]?.feedback">
+                            <span class="font-bold text-gray-400 uppercase tracking-wide text-[9px] not-italic block mb-0.5">Relato do Aluno:</span>
+                            <span x-text="respostas[dia.id]?.feedback"></span>
+                        </div>
                     </div>
                 </div>
             </template>
         </div>
     </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 p-4 z-50 no-print" x-show="planilha.length > 0" x-cloak>
+        <div class="max-w-md mx-auto grid grid-cols-1">
+            <button @click="limparSemanaAtual()" 
+                    class="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-400 text-[10px] font-black uppercase tracking-widest py-3 px-6 rounded-full w-fit mx-auto cursor-pointer shadow-lg active:scale-95 transition-all mb-3"
+                    x-show="modoImpressao === false">
+                ⚠️ Limpar feedbacks da semana
+            </button>
+        </div>
+    </footer>
 
 </body>
 </html>
