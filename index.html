@@ -59,6 +59,30 @@
             .print-feedback-box { font-size: 8.5px !important; color: #475569 !important; font-style: italic !important; margin-top: 8px !important; padding-top: 6px !important; border-top: 1px solid #e2e8f0 !important; line-height: 1.3 !important; word-break: break-word !important; }
         }
     </style>
+
+    <script type="module">
+        import app from './firebase.js';
+        import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        
+        const db = getFirestore(app);
+
+        // Função global para o Alpine conseguir disparar a gravação na nuvem
+        window.salvarNoFirebase = async function(diaId, dados) {
+            try {
+                // Salva dentro da coleção 'treinos_lucas' usando o ID exclusivo de cada dia
+                await setDoc(doc(db, "treinos_lucas", diaId), {
+                    status: dados.status || '',
+                    pace: dados.pace || '',
+                    tempo: dados.tempo || '',
+                    feedback: dados.feedback || '',
+                    atualizadoEm: new Date().toISOString()
+                }, { merge: true });
+                console.log(`Dados salvos no Firebase para o dia: ${diaId}`);
+            } catch (error) {
+                console.error("Erro técnico ao salvar dados no Firebase:", error);
+            }
+        };
+    </script>
 </head>
 <body class="min-h-screen pb-40 select-none transition-colors duration-300"
       x-data="{
@@ -99,8 +123,15 @@
             localStorage.setItem('tema_lucas_run', this.isDark ? 'escuro' : 'claro');
         },
 
-        salvarNoCelular() {
+        salvarNoCelular(diaId) {
+            // Mantém o salvamento no localStorage local
             localStorage.setItem('feedback_treinos_lucas', JSON.stringify(this.respostas));
+            
+            // Dispara a sincronização assíncrona com a nuvem do Firebase
+            if (diaId && window.salvarNoFirebase) {
+                window.salvarNoFirebase(diaId, this.respostas[diaId]);
+            }
+
             const toast = document.getElementById('toast-sucesso');
             if (toast) {
                 toast.classList.remove('opacity-0', 'translate-y-2');
@@ -114,7 +145,7 @@
             } else {
                 this.respostas[id].status = valor; 
             }
-            this.salvarNoCelular();
+            this.salvarNoCelular(id);
         },
 
         exportarPDF() {
@@ -131,7 +162,7 @@
     <div id="toast-sucesso" 
          :class="isDark ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-white border-neutral-200 text-neutral-700'"
          class="fixed top-6 left-1/2 -translate-x-1/2 border text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-2 z-50 pointer-events-none no-print">
-        ✓ Sincronizado
+        ✓ Sincronizado com a Nuvem
     </div>
 
     <header class="w-full max-w-md mx-auto pt-6 px-4" x-show="planilha.length > 0" x-cloak>
@@ -292,13 +323,13 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Pace Médio</label>
-                            <input type="text" placeholder="5'15''/km" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].pace"
+                            <input type="text" placeholder="5'15''/km" @input="salvarNoCelular(planilha[semanaAtiva].dias[diaAtivoIndex].id)" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].pace"
                                    :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
                                    class="w-full border text-base text-center py-3 px-3 rounded-xl focus:outline-none font-mono transition-all">
                         </div>
                         <div>
                             <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Tempo Total</label>
-                            <input type="text" placeholder="24 min" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].tempo"
+                            <input type="text" placeholder="24 min" @input="salvarNoCelular(planilha[semanaAtiva].dias[diaAtivoIndex].id)" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].tempo"
                                    :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
                                    class="w-full border text-base text-center py-3 px-3 rounded-xl focus:outline-none font-mono transition-all">
                         </div>
@@ -306,7 +337,7 @@
 
                     <div>
                         <label class="text-[9px] text-neutral-500 font-black uppercase tracking-widest block mb-1">Relato de Sensações</label>
-                        <textarea rows="2" placeholder="Como se sentiu durante a corrida?" @input="salvarNoCelular()" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].feedback"
+                        <textarea rows="2" placeholder="Como se sentiu durante a corrida?" @input="salvarNoCelular(planilha[semanaAtiva].dias[diaAtivoIndex].id)" x-model="respostas[planilha[semanaAtiva].dias[diaAtivoIndex].id].feedback"
                                   :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white focus:border-amber-500' : 'bg-neutral-50 border-neutral-300 text-neutral-900 focus:border-amber-500'"
                                   class="w-full border text-base p-3 rounded-xl focus:outline-none leading-relaxed resize-none transition-all"></textarea>
                     </div>
