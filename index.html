@@ -17,34 +17,6 @@
         .card-transition { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
         input[type="text"], input[type="email"], input[type="password"], textarea, select { font-size: 16px !important; }
     </style>
-
-    <script type="module">
-        import { auth, db } from './firebase.js';
-        import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-        import { doc, setDoc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-
-        // Vincula as funções à janela global para o Alpine.js conseguir chamar direto nos botões
-        window.firebaseLogin = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
-        window.firebaseCadastro = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
-        window.firebaseLogout = () => signOut(auth);
-        
-        window.salvarPlanilhaNuvem = async (atletaNome, dadosPlanilha) => {
-            await setDoc(doc(db, "planilhas", atletaNome), dadosPlanilha);
-        };
-
-        window.buscarPlanilhaNuvem = async (atletaNome) => {
-            const docRef = doc(db, "planilhas", atletaNome);
-            const docSnap = await getDoc(docRef);
-            return docSnap.exists() ? docSnap.data() : null;
-        };
-
-        window.salvarFeedbackNuvem = async (diaId, dados) => {
-            await setDoc(doc(db, "treinos_lucas", diaId), {
-                ...dados,
-                atualizadoEm: new Date().toISOString()
-            }, { merge: true });
-        };
-    </script>
 </head>
 <body class="min-h-screen pb-20 transition-colors duration-300"
       :class="isDark ? 'bg-neutral-950 text-neutral-50' : 'bg-neutral-100 text-neutral-900'"
@@ -52,11 +24,17 @@
         user: null,
         isProfessor: false,
         isDark: true,
-        authModo: 'login', // login ou cadastro
+        authModo: 'login',
         email: '',
         senha: '',
         erroMsg: '',
         sucessoMsg: '',
+        
+        // Conexões com o Firebase
+        auth: null,
+        db: null,
+        fbAuthModule: null,
+        fbStoreModule: null,
         
         // Dados do Aluno
         semanaAtiva: 0,
@@ -65,7 +43,7 @@
         respostas: {},
         abaZonasAberta: false,
 
-        // Formulário do Professor (Criação do zero)
+        // Formulário do Professor
         profAtleta: '',
         profSemana: '',
         profObjetivo: 'TAF 12 minutos',
@@ -78,90 +56,100 @@
             { id: 'sab', nome: 'SÁBADO', aquecimento: '', principal: '', desaquecimento: '' }
         ],
 
-        init() {
-            // Monitor de Autenticação em Tempo Real
-            // Modifique o e-mail abaixo para definir quem será o seu administrador/professor
+        async init() {
             const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
 
-            // Carrega feedback local temporário de segurança
             const localFeed = localStorage.getItem('feedback_treinos_lucas');
             if (localFeed) this.respostas = JSON.parse(localFeed);
 
-            // Escuta se o usuário logou ou deslogou
-            setTimeout(() => {
-                window.firebaseAuth = true;
-                const { auth } = module; 
-                // Monitor do Firebase
-                document.addEventListener('DOMContentLoaded', () => {});
-            }, 100);
+            try {
+                // Carrega as configurações do seu arquivo firebase.js de forma dinâmica
+                const firebaseApp = await import('./firebase.js');
+                
+                // Carrega os módulos oficiais do Firebase via CDN
+                this.fbAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+                this.fbStoreModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                this.auth = firebaseApp.auth;
+                this.db = firebaseApp.db;
 
-            // Escuta nativa do Firebase
-            setTimeout(() => {
-                const checkAuth = setInterval(() => {
-                    if (window.salvarPlanilhaNuvem) {
-                        clearInterval(checkAuth);
-                        import('./firebase.js').then((m) => {
-                            const { getAuth, onAuthStateChanged } =  import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-                            import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js').then((authModule) => {
-                                authModule.onAuthStateChanged(m.auth, async (usuario) => {
-                                    if (usuario) {
-                                        this.user = usuario;
-                                        this.isProfessor = (usuario.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
-                                        this.erroMsg = '';
-                                        
-                                        if (!this.isProfessor) {
-                                            // Se for aluno, busca automaticamente a planilha dele salva na nuvem pelo e-mail/nome
-                                            await this.carregarPlanilhaDoAluno(usuario.email);
-                                        }
-                                    } else {
-                                        this.user = null;
-                                        this.isProfessor = false;
-                                        this.planilha = [];
-                                    }
-                                });
-                            });
-                        });
+                // Monitora o estado do usuário na nuvem
+                this.fbAuthModule.onAuthStateChanged(this.auth, async (usuario) => {
+                    if (usuario) {
+                        this.user = usuario;
+                        this.isProfessor = (usuario.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
+                        this.erroMsg = '';
+                        
+                        if (!this.isProfessor) {
+                            await this.carregarPlanilhaDoAluno(usuario.email);
+                        }
+                    } else {
+                        this.user = null;
+                        this.isProfessor = false;
+                        this.planilha = [];
                     }
-                }, 200);
-            }, 50);
+                });
+            } catch (e) {
+                console.error('Erro ao inicializar módulos do Firebase:', e);
+                this.erroMsg = 'Erro de conexão com o servidor. Verifique a internet.';
+            }
         },
 
         async executarAuth() {
             this.erroMsg = '';
             this.sucessoMsg = '';
-            if(!this.email || !this.senha) { this.erroMsg = 'Preencha todos os campos.'; return; }
+            if (!this.email || !this.senha) { this.erroMsg = 'Preencha todos os campos.'; return; }
+            if (this.senha.length < 6) { this.erroMsg = 'A senha precisa ter no mínimo 6 caracteres.'; return; }
+            if (!this.auth || !this.fbAuthModule) { this.erroMsg = 'O sistema ainda está conectando. Aguarde 3 segundos.'; return; }
             
             try {
                 if (this.authModo === 'login') {
-                    await window.firebaseLogin(this.email, this.senha);
+                    await this.fbAuthModule.signInWithEmailAndPassword(this.auth, this.email, this.senha);
                 } else {
-                    await window.firebaseCadastro(this.email, this.senha);
-                    this.sucessoMsg = 'Conta criada com sucesso! Redirecionando...';
-                    this.authModo = 'login';
+                    await this.fbAuthModule.createUserWithEmailAndPassword(this.auth, this.email, this.senha);
+                    this.sucessoMsg = 'Conta mestre criada com sucesso! Carregando painel...';
                 }
             } catch (err) {
-                this.erroMsg = 'Erro: Credenciais inválidas ou falha de conexão.';
-                console.error(err);
+                if (err.code === 'auth/email-already-in-use') {
+                    this.erroMsg = 'Este e-mail já está cadastrado. Tente fazer login.';
+                } else if (err.code === 'auth/weak-password') {
+                    this.erroMsg = 'A senha precisa ter pelo menos 6 dígitos.';
+                } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+                    this.erroMsg = 'E-mail ou senha incorretos.';
+                } else {
+                    this.erroMsg = 'Falha ao autenticar. Verifique seus dados.';
+                }
+                console.error("Erro original do Firebase:", err.code);
             }
         },
 
         async logout() {
-            await window.firebaseLogout();
-            this.email = '';
-            this.senha = '';
+            if (this.fbAuthModule && this.auth) {
+                await this.fbAuthModule.signOut(this.auth);
+                this.email = '';
+                this.senha = '';
+            }
         },
 
-        async carregarPlanilhaDoAluno(identificador) {
-            // Tenta buscar uma planilha cujo nome do documento seja o e-mail ou o nome cadastrado
-            let dados = await window.buscarPlanilhaNuvem(identificador);
-            if (!dados) {
-                // Tenta buscar pelo formato padrão se o professor cadastrou com o nome limpo
-                dados = await window.buscarPlanilhaNuvem('Lucas Domingues');
-            }
-            if (dados && dados.semanas) {
-                this.planilha = dados.semanas;
-                this.semanaAtiva = 0;
-                this.diaAtivoIndex = 0;
+        async carregarPlanilhaDoAluno(emailIdentificador) {
+            if (!this.db || !this.fbStoreModule) return;
+            try {
+                const docRef = this.fbStoreModule.doc(this.db, "planilhas", emailIdentificador);
+                let docSnap = await this.fbStoreModule.getDoc(docRef);
+                
+                // Se não achar pelo e-mail, busca pelo nome padrão de teste
+                if (!docSnap.exists()) {
+                    const docPadraoRef = this.fbStoreModule.doc(this.db, "planilhas", "Lucas Domingues");
+                    docSnap = await this.fbStoreModule.getDoc(docPadraoRef);
+                }
+
+                if (docSnap.exists() && docSnap.data().semanas) {
+                    this.planilha = docSnap.data().semanas;
+                    this.semanaAtiva = 0;
+                    this.diaAtivoIndex = 0;
+                }
+            } catch (err) {
+                console.error("Erro ao carregar planilha:", err);
             }
         },
 
@@ -169,12 +157,11 @@
             this.erroMsg = '';
             this.sucessoMsg = '';
             if (!this.profAtleta || !this.profSemana || !this.profPeriodo) {
-                this.erroMsg = 'Preencha o nome do atleta, número da semana e o período.';
+                this.erroMsg = 'Preencha o nome do atleta, o número da semana e o período.';
                 return;
             }
 
             try {
-                // Monta o objeto no formato exato que o seu app lê
                 const novaSemana = {
                     semana: this.profSemana,
                     atleta: this.profAtleta,
@@ -190,33 +177,42 @@
                     }))
                 };
 
-                // Busca se o atleta já tem alguma planilha para não apagar o histórico anterior
-                let planilhaExistente = await window.buscarPlanilhaNuvem(this.profAtleta);
+                const docRef = this.fbStoreModule.doc(this.db, "planilhas", this.profAtleta);
+                const docSnap = await this.fbStoreModule.getDoc(docRef);
+                
                 let listaSemanas = [];
-                if (planilhaExistente && planilhaExistente.semanas) {
-                    listaSemanas = planilhaExistente.semanas.filter(s => s.semana !== this.profSemana);
+                if (docSnap.exists() && docSnap.data().semanas) {
+                    listaSemanas = docSnap.data().semanas.filter(s => s.semana !== this.profSemana);
                 }
-                listaSemanas.unshift(novaSemana); // Coloca a nova semana no topo
+                listaSemanas.unshift(novaSemana);
 
-                await window.salvarPlanilhaNuvem(this.profAtleta, { semanas: listaSemanas });
+                await this.fbStoreModule.setDoc(docRef, { semanas: listaSemanas });
                 
-                this.sucessoMsg = 'Nova planilha publicada na nuvem com sucesso para ' + this.profAtleta + '!';
-                
-                // Limpa formulário de treinos
+                this.sucessoMsg = 'Nova planilha publicada com sucesso para ' + this.profAtleta + '!';
                 this.profSemana = '';
                 this.profPeriodo = '';
                 this.profDias.forEach(d => { d.aquecimento = ''; d.principal = ''; d.desaquecimento = ''; });
             } catch (err) {
-                this.erroMsg = 'Falha técnica ao publicar plano.';
+                this.erroMsg = 'Falha técnica ao salvar a planilha no banco.';
                 console.error(err);
             }
         },
 
         async salvarResposta(diaId) {
             localStorage.setItem('feedback_treinos_lucas', JSON.stringify(this.respostas));
-            if (window.salvarFeedbackNuvem && this.respostas[diaId]) {
-                await window.salvarFeedbackNuvem(diaId, this.respostas[diaId]);
+            
+            if (this.db && this.fbStoreModule && this.respostas[diaId]) {
+                try {
+                    const docRef = this.fbStoreModule.doc(this.db, "treinos_lucas", diaId);
+                    await this.fbStoreModule.setDoc(docRef, {
+                        ...this.respostas[diaId],
+                        atualizadoEm: new Date().toISOString()
+                    }, { merge: true });
+                } catch (e) {
+                    console.error("Erro ao subir feedback:", e);
+                }
             }
+
             const toast = document.getElementById('toast-sucesso');
             if (toast) {
                 toast.classList.remove('opacity-0', 'translate-y-2');
@@ -249,7 +245,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Senha Segura</label>
-                    <input type="password" x-model="senha" placeholder="******" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none focus:border-amber-500">
+                    <input type="password" x-model="senha" placeholder="Mínimo 6 caracteres" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border py-3 px-4 rounded-xl focus:outline-none focus:border-amber-500">
                 </div>
 
                 <div x-show="erroMsg" class="text-xs font-bold text-rose-500 bg-rose-500/10 p-3 rounded-xl" x-text="erroMsg" x-cloak></div>
@@ -285,8 +281,8 @@
                 <div class="space-y-4 text-xs">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="font-bold text-neutral-400 uppercase tracking-wider block mb-1">Nome do Aluno</label>
-                            <input type="text" x-model="profAtleta" placeholder="Lucas Domingues" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border p-2.5 rounded-xl focus:outline-none">
+                            <label class="font-bold text-neutral-400 uppercase tracking-wider block mb-1">E-mail ou Nome do Aluno</label>
+                            <input type="text" x-model="profAtleta" placeholder="ex: lucas@email.com ou Lucas Domingues" :class="isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-300 text-neutral-900'" class="w-full border p-2.5 rounded-xl focus:outline-none">
                         </div>
                         <div>
                             <label class="font-bold text-neutral-400 uppercase tracking-wider block mb-1">Semana Nº</label>
@@ -345,7 +341,7 @@
         <div x-show="!isProfessor" class="w-full max-w-md mx-auto mt-2">
             
             <div x-show="planilha.length === 0" class="px-4 pt-10 text-center">
-                <p class="text-xs font-medium text-neutral-400 leading-relaxed">Nenhuma planilha foi localizada para este perfil na nuvem.<br>O Professor precisa criar o primeiro plano de treinos para você.</p>
+                <p class="text-xs font-medium text-neutral-400 leading-relaxed">Nenhuma planilha foi localizada para este perfil na nuvem.<br>O Professor precisa criar o primeiro plano de treinos informando seu e-mail ou o termo 'Lucas Domingues'.</p>
             </div>
 
             <div x-show="planilha.length > 0">
@@ -458,10 +454,7 @@
                     </div>
                 </main>
             </div>
-
         </div>
-
     </div>
-
 </body>
 </html>
