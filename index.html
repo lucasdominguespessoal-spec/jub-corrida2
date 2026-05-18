@@ -116,16 +116,22 @@
                 if (this.authModo === 'login') {
                     const credencial = await window.executarLoginNuvem(this.email, this.senha);
                     
-                    // FORÇA O RECONHECIMENTO IMEDIATO DO PROFESSOR NO ALPINE
-                    const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
-                    if (credencial.user && credencial.user.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase()) {
+                    if (credencial.user) {
+                        // Define o usuário ativo no sistema
                         this.user = credencial.user;
-                        this.isProfessor = true;
+                        
+                        // Verifica se é o e-mail mestre do treinador
+                        const EMAIL_PROFESSOR = 'lucasdominguespessoal@gmail.com';
+                        this.isProfessor = (credencial.user.email.toLowerCase() === EMAIL_PROFESSOR.toLowerCase());
+                        
+                        // Destrava a tela e renderiza o painel correspondente na hora
                         this.inicializado = true;
                     }
                 } else {
                     await window.executarCadastroNuvem(this.email, this.senha);
                     this.sucessoMsg = 'Conta criada com sucesso! Mude para Login para acessar.';
+                    // Altera visualmente para o modo login para facilitar para o aluno
+                    this.authModo = 'login';
                 }
             } catch (err) {
                 console.error(err);
